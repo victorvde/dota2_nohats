@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import codecs
 
 
 def getchar(s):
@@ -82,8 +81,14 @@ def dump(d, s, i=0):
             assert False, u"Expected OrderedDict or basestring, got {}".format(type(v))
 
 
-if __name__ == "__main__":
-    with codecs.open("items_game.txt", "r", "utf_8") as input:
+def process_items_game(callback):
+    with open("items_game.txt", "rb") as input:
         d = load(input)
-    with codecs.open("items_game_dump.txt", "w", "utf-8") as output:
+    callback(d)
+    with open("items_game_dump.txt", "wb") as output:
         dump(d, output)
+
+if __name__ == "__main__":
+    process_items_game(lambda d: d)
+#    import cProfile
+#    cProfile.run('main()')
