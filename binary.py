@@ -22,7 +22,7 @@ class BaseField(object):
 
     @data.setter
     def data(self, v):
-        return self._data
+        self._data = v
 
 class Struct(BaseField):
     def add_field(self, name, f):
@@ -167,7 +167,7 @@ class DependentArray(BaseArray):
     @BaseArray.data.setter
     def data(self, v):
         self.prefix_field.data = len(v)
-        BaseArray.data.__set__(v)
+        BaseArray.data.__set__(self, v)
 
 class PrefixedArray(DependentArray):
     def unpack(self, s):

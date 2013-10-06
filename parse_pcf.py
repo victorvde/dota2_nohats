@@ -72,3 +72,7 @@ with open("x.pcf", "rb") as s:
     print(json.dumps(p.data, indent=4))
 with open("y.pcf", "wb") as s:
     p.pack(s)
+q = PCF()
+q.data = p.data
+with open("z.pcf", "wb") as s:
+    q.pack(s)
