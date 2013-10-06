@@ -1,27 +1,27 @@
-from binary import Struct, Magic, Format, FormatField, StringField, BlobField, PrefixedBlobField, PrefixedArray, PrefixedArrayField, DependentArray, DependentArrayField, Index
+from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, DependentArray, Index
 import json
 from uuid import UUID
 
 attribute_types = {
-    1 : lambda: FormatField("I"), # element index
-    2 : lambda: FormatField("I"), # integer
-    3 : lambda: FormatField("f"), # float
-    4 : lambda: FormatField("?"), # bool
-    5 : lambda: FormatField("I"), # string
-    6 : lambda: PrefixedBlobField(FormatField("I")), # blob
-    7 : lambda: FormatField("I"), # time
-    8 : lambda: FormatField("4B"), # color
-    9 : lambda: FormatField("2f"), # vector2
-    10 : lambda: FormatField("3f"), # vector3
-    11 : lambda: FormatField("4f"), # vector4
-    12 : lambda: FormatField("3f"), # angle
-    13 : lambda: FormatField("4f"), # quaternion
-    14 : lambda: FormatField("16f"), # matrix
+    1 : lambda: Format("I"), # element index
+    2 : lambda: Format("I"), # integer
+    3 : lambda: Format("f"), # float
+    4 : lambda: Format("?"), # bool
+    5 : lambda: Format("I"), # string
+    6 : lambda: PrefixedBlob(Format("I")), # blob
+    7 : lambda: Format("I"), # time
+    8 : lambda: Format("4B"), # color
+    9 : lambda: Format("2f"), # vector2
+    10 : lambda: Format("3f"), # vector3
+    11 : lambda: Format("4f"), # vector4
+    12 : lambda: Format("3f"), # angle
+    13 : lambda: Format("4f"), # quaternion
+    14 : lambda: Format("16f"), # matrix
     }
 
-class UUIDField(BlobField):
+class UUIDField(Blob):
     def __init__(self):
-        BlobField.__init__(self, 16)
+        Blob.__init__(self, 16)
 
     @property
     def data(self):
@@ -37,13 +37,13 @@ class Attribute(Struct):
         Struct.__init__(self)
 
     def fields(self):
-        Index(self, "name", self.strings, "I")
-        Format(self, "type", "B")
-        type = self.data["type"]
+        self.F("name", Index(self.strings, "I"))
+        self.F("type", Format("B"))
+        type = self.field["type"].data
         if 1 <= type <= 14:
-            self.add_field("data", attribute_types[type]())
+            self.F("data", attribute_types[type]())
         elif 14 < type <= 28:
-            PrefixedArray(self, "data", FormatField("I"), attribute_types[type - 14])
+            self.F("data", PrefixedArray(Format("I"), attribute_types[type - 14]))
         else:
             assert False, type
 
@@ -53,17 +53,19 @@ class Element(Struct):
         Struct.__init__(self)
 
     def fields(self):
-        Index(self, "type", self.strings, "I")
-        Index(self, "name", self.strings, "I")
-        self.add_field("guid", UUIDField())
+        self.F("type", Index(self.strings, "I"))
+        self.F("name", Index(self.strings, "I"))
+        self.F("guid", UUIDField())
 
 class PCF(Struct):
     def fields(self):
-        Magic(self, "magic", "<!-- dmx encoding binary 5 format pcf 2 -->\n\0")
-        strings = PrefixedArray(self, "strings", FormatField("I"), StringField)
-        Format(self, "nelements", "I")
-        DependentArray(self, "elements", self.field["nelements"], lambda: Element(strings.data))
-        DependentArray(self, "attributes", self.field["nelements"], lambda: PrefixedArrayField(FormatField("I"), lambda: Attribute(strings.data)))
+        self.F("magic", Magic("<!-- dmx encoding binary 5 format pcf 2 -->\n\0"))
+        strings = PrefixedArray(Format("I"), String)
+        self.F("strings", strings)
+        nelements = Format("I")
+        self.F("nelements", nelements)
+        self.F("elements", DependentArray(nelements, lambda: Element(strings.data)))
+        self.F("attributes", DependentArray(nelements, lambda: PrefixedArray(Format("I"), lambda: Attribute(strings.data))))
 
 with open("x.pcf", "rb") as s:
     p = PCF()

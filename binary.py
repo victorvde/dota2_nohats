@@ -39,6 +39,9 @@ class Struct(BaseField):
         else:
             assert False, "no data or stream"
 
+    def F(self, name, f):
+        return self.add_field(name, f)
+
     def unpack(self, s):
         self.field = OrderedDict()
         self.stream = s
@@ -66,7 +69,7 @@ class Struct(BaseField):
     def fields(self):
         raise NotImplementedError
 
-class MagicField(BaseField):
+class Magic(BaseField):
     def __init__(self, magic):
         self.magic = magic
 
@@ -85,7 +88,7 @@ class MagicField(BaseField):
     def data(self, v):
         assert v == self.magic or v is None, v
 
-class FormatField(BaseField):
+class Format(BaseField):
     def __init__(self, fmt):
         if fmt[0] in "@=<>!":
             bosa = fmt[0]
@@ -120,7 +123,7 @@ class FormatField(BaseField):
         else:
             self._data = v
 
-class BaseArrayField(BaseField):
+class BaseArray(BaseField):
     def __init__(self, field_function=None, indexed_function=None):
         if indexed_function is None:
             indexed_function = lambda i: field_function()
@@ -148,37 +151,37 @@ class BaseArrayField(BaseField):
         for f, fv in zip(self.field, v):
             f.data = fv
 
-class ArrayField(BaseArrayField):
+class Array(BaseArray):
     def __init__(self, size, *args, **kwargs):
         self.size = size
-        BaseArrayField.__init__(self, *args, **kwargs)
+        BaseArray.__init__(self, *args, **kwargs)
 
     def array_size(self):
         return self.size
 
-class DependentArrayField(BaseArrayField):
+class DependentArray(BaseArray):
     def __init__(self, prefix_field, *args, **kwargs):
         self.prefix_field = prefix_field
-        BaseArrayField.__init__(self, *args, **kwargs)
+        BaseArray.__init__(self, *args, **kwargs)
 
     def array_size(self):
         return self.prefix_field.data
 
-    @BaseArrayField.data.setter
+    @BaseArray.data.setter
     def data(self, v):
         self.prefix_field.data = len(v)
-        BaseArrayField.data.__set__(v)
+        BaseArray.data.__set__(v)
 
-class PrefixedArrayField(DependentArrayField):
+class PrefixedArray(DependentArray):
     def unpack(self, s):
         self.prefix_field.unpack(s)
-        DependentArrayField.unpack(self, s)
+        DependentArray.unpack(self, s)
 
     def pack(self, s):
         self.prefix_field.pack(s)
-        DependentArrayField.pack(self, s)
+        DependentArray.pack(self, s)
 
-class BlobField(BaseField):
+class Blob(BaseField):
     def __init__(self, size):
         self.size = size
 
@@ -188,7 +191,7 @@ class BlobField(BaseField):
     def pack(self, s):
         s.write(self._data)
 
-class DependentBlobField(BaseField):
+class DependentBlob(BaseField):
     def __init__(self, prefix_field):
         self.prefix_field = prefix_field
 
@@ -207,16 +210,16 @@ class DependentBlobField(BaseField):
         self.prefix_field.data = len(v)
         self._data = v
 
-class PrefixedBlobField(DependentBlobField):
+class PrefixedBlob(DependentBlob):
     def unpack(self, s):
         self.prefix_field.unpack(s)
-        DependentBlobField.unpack(self, s)
+        DependentBlob.unpack(self, s)
 
     def pack(self, s):
         self.prefix_field.pack(s)
-        DependentBlobField.pack(self, s)
+        DependentBlob.pack(self, s)
 
-class StringField(BaseField):
+class String(BaseField):
     def unpack(self, s):
         lc = []
         c = getbyte(s)
@@ -229,33 +232,15 @@ class StringField(BaseField):
         s.write(self._data)
         s.write('\0')
 
-class IndexField(FormatField):
+class Index(Format):
     def __init__(self, array, *args, **kwargs):
         self.array = array
-        FormatField.__init__(self, *args, **kwargs)
+        Format.__init__(self, *args, **kwargs)
 
     @property
     def data(self):
-        return self.array[FormatField.data.__get__(self)]
+        return self.array[Format.data.__get__(self)]
 
     @data.setter
     def data(self, v):
-        FormatField.data.__set__(self, self.array.index(v))
-
-def fieldmaker(field):
-    def maker(i, name, *args, **kwargs):
-        f = field(*args, **kwargs)
-        i.add_field(name, f)
-        return f
-    return maker
-
-Magic = fieldmaker(MagicField)
-Format = fieldmaker(FormatField)
-Array = fieldmaker(ArrayField)
-DependentArray = fieldmaker(DependentArrayField)
-PrefixedArray = fieldmaker(PrefixedArrayField)
-String = fieldmaker(StringField)
-Blob = fieldmaker(BlobField)
-DependentBlob = fieldmaker(DependentBlobField)
-PrefixedBlob = fieldmaker(PrefixedBlobField)
-Index = fieldmaker(IndexField)
+        Format.data.__set__(self, self.array.index(v))
