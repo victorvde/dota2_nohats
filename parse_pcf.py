@@ -34,7 +34,6 @@ class UUIDField(Blob):
 class Attribute(Struct):
     def __init__(self, strings):
         self.strings = strings
-        Struct.__init__(self)
 
     def fields(self):
         self.F("name", Index(self.strings, "I"))
@@ -50,7 +49,6 @@ class Attribute(Struct):
 class Element(Struct):
     def __init__(self, strings):
         self.strings = strings
-        Struct.__init__(self)
 
     def fields(self):
         self.F("type", Index(self.strings, "I"))

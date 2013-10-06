@@ -25,28 +25,25 @@ class BaseField(object):
         return self._data
 
 class Struct(BaseField):
-    def __init__(self):
-        self.given_data = None
-        self.stream = None
-
     def add_field(self, name, f):
         assert name not in self.field, name
         self.field[name] = f
-        if self.given_data:
-            f.data = self.given_data.get(name, None)
-        elif self.stream:
-            f.unpack(self.stream)
+        input_type, v = self.input
+        if input_type == "data":
+            f.data = v.get(name, None)
+        elif input_type == "stream":
+            f.unpack(v)
         else:
-            assert False, "no data or stream"
+            assert False, input_type
 
     def F(self, name, f):
         return self.add_field(name, f)
 
     def unpack(self, s):
         self.field = OrderedDict()
-        self.stream = s
+        self.input = ("stream", s)
         self.fields()
-        self.stream = None
+        del self.input
 
     def pack(self, s):
         for name, f in self.field.iteritems():
@@ -62,9 +59,9 @@ class Struct(BaseField):
     @data.setter
     def data(self, v):
         self.field = OrderedDict()
-        self.given_data = v
+        self.input = ("data", v)
         self.fields()
-        self.given_data = None
+        del self.input
 
     def fields(self):
         raise NotImplementedError
