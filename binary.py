@@ -13,6 +13,9 @@ class BaseField(object):
     def unpack(self, s):
         raise NotImplementedError
 
+    def pack(self, s):
+        raise NotImplementedError
+
     @property
     def data(self):
         return self._data
@@ -42,6 +45,10 @@ class Struct(BaseField):
         self.fields()
         self.stream = None
 
+    def pack(self, s):
+        for name, f in self.field.iteritems():
+            f.pack(s)
+
     @property
     def data(self):
         data = OrderedDict()
@@ -66,7 +73,9 @@ class MagicField(BaseField):
     def unpack(self, s):
         data = getbytes(s, len(self.magic))
         assert data == self.magic
-        return
+
+    def pack(self, s):
+        data = s.write(self.magic)
 
     @property
     def data(self):
@@ -90,9 +99,11 @@ class FormatField(BaseField):
     def unpack(self, s):
         fmt = self.bosa + self.fmt
         size = calcsize(fmt)
-        lc = s.read(size)
-        assert len(lc) == size, "Unexpected EOF"
-        self._data = unpack(fmt, lc)
+        b = getbytes(s, size)
+        self._data = unpack(fmt, b)
+
+    def pack(self, s):
+        s.write(pack(self.fmt, *self._data))
 
     @property
     def data(self):
@@ -122,6 +133,10 @@ class BaseArrayField(BaseField):
         self.field = [self.field_fun(i) for i in xrange(self.array_size())]
         for f in self.field:
             f.unpack(s)
+
+    def pack(self, s):
+        for f in self.field:
+            f.pack(s)
 
     @property
     def data(self):
@@ -159,6 +174,10 @@ class PrefixedArrayField(DependentArrayField):
         self.prefix_field.unpack(s)
         DependentArrayField.unpack(self, s)
 
+    def pack(self, s):
+        self.prefix_field.pack(s)
+        DependentArrayField.pack(self, s)
+
 class BlobField(BaseField):
     def __init__(self, size):
         self.size = size
@@ -166,12 +185,18 @@ class BlobField(BaseField):
     def unpack(self, s):
         self._data = getbytes(s, self.size)
 
+    def pack(self, s):
+        s.write(self._data)
+
 class DependentBlobField(BaseField):
     def __init__(self, prefix_field):
         self.prefix_field = prefix_field
 
     def unpack(self, s):
         self._data = getbytes(s, self.prefix_field.data)
+
+    def pack(self, s):
+        s.write(self._data)
 
     @property
     def data(self):
@@ -187,6 +212,10 @@ class PrefixedBlobField(DependentBlobField):
         self.prefix_field.unpack(s)
         DependentBlobField.unpack(self, s)
 
+    def pack(self, s):
+        self.prefix_field.pack(s)
+        DependentBlobField.pack(self, s)
+
 class StringField(BaseField):
     def unpack(self, s):
         lc = []
@@ -195,6 +224,10 @@ class StringField(BaseField):
             lc.append(c)
             c = getbyte(s)
         self._data = "".join(lc)
+
+    def pack(self, s):
+        s.write(self._data)
+        s.write('\0')
 
 class IndexField(FormatField):
     def __init__(self, array, *args, **kwargs):
@@ -213,6 +246,7 @@ def fieldmaker(field):
     def maker(i, name, *args, **kwargs):
         f = field(*args, **kwargs)
         i.add_field(name, f)
+        return f
     return maker
 
 Magic = fieldmaker(MagicField)

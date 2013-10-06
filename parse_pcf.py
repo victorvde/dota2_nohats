@@ -60,13 +60,15 @@ class Element(Struct):
 class PCF(Struct):
     def fields(self):
         Magic(self, "magic", "<!-- dmx encoding binary 5 format pcf 2 -->\n\0")
-        PrefixedArray(self, "strings", FormatField("I"), StringField)
-        strings = self.field["strings"].data
+        strings = PrefixedArray(self, "strings", FormatField("I"), StringField)
         Format(self, "nelements", "I")
-        DependentArray(self, "elements", self.field["nelements"], lambda: Element(strings))
-        DependentArray(self, "attributes", self.field["nelements"], lambda: PrefixedArrayField(FormatField("I"), lambda: Attribute(strings)))
+        DependentArray(self, "elements", self.field["nelements"], lambda: Element(strings.data))
+        DependentArray(self, "attributes", self.field["nelements"], lambda: PrefixedArrayField(FormatField("I"), lambda: Attribute(strings.data)))
 
 with open("x.pcf", "rb") as s:
     p = PCF()
     p.unpack(s)
+    assert s.read(1) == ""
     print(json.dumps(p.data, indent=4))
+with open("y.pcf", "wb") as s:
+    p.pack(s)
