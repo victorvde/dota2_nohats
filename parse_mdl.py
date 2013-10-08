@@ -155,7 +155,7 @@ class LocalSequence(Struct):
         self.F("labelindex", RelativeString(base, "i"))
         self.F("activitynameindex", RelativeString(base, "i"))
         self.F("flags", Format("I"))
-        self.F("activity_int", Format("i"))
+        self.F("activity", Format("i"))
         self.F("actweight", Format("I"))
         self.F("numevents", Format("I"))
         self.F("eventindex", Relative(base, "i"))
@@ -189,12 +189,12 @@ class LocalSequence(Struct):
         self.F("keyvalueindex", Relative(base, "i"))
         self.F("keyvaluesize", Format("I"))
         self.F("cycleposeindex", Relative(base, "i"))
-        self.F("activityindex", Relative(base, "i"))
-        self.F("numactivity", Format("I"))
+        self.F("activitymodifierindex", Relative(base, "i"))
+        self.F("numactivitymodifier", Format("I"))
         self.F("unused", Format("5I"))
 
         # self.F("event", Pointer(self.field["eventindex"].data, Array(self.field["numevents"].data, Event)))
-        self.F("activity", Pointer(self.field["activityindex"].data, Array(self.field["numactivity"].data, Activity)))
+        self.F("activitymodifier", Pointer(self.field["activitymodifierindex"].data, Array(self.field["numactivitymodifier"].data, Activity)))
 
 class Activity(Struct):
     def fields(self):
@@ -219,7 +219,7 @@ with open("windrunner.mdl", "rb") as s:
         print "sequence", i
         print "--", sequence["labelindex"][1]
         print "--", sequence["activitynameindex"][1]
-        print "--", [activity["szindex"][1] for activity in sequence["activity"]]
+        print "--", [modifier["szindex"][1] for modifier in sequence["activitymodifier"]]
         print ""
 
     print json.dumps(m.data, indent=4)
