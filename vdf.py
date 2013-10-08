@@ -6,7 +6,7 @@ def skip_space(s):
         if c == "/":
             while True:
                 c = s.read(1)
-                if c == "\n":
+                if c == "\n" or c == "":
                     break
         elif not c.isspace():
             break
