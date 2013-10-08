@@ -9,11 +9,31 @@ def getbytes(s, n):
 def getbyte(s):
     return getbytes(s, 1)
 
+class Seek(object):
+    def __init__(self, s, *args, **kwargs):
+        self.old_pos = None
+        self.s = s
+        self.args = args
+        self.kwargs = kwargs
+
+    def __enter__(self):
+        self.old_pos = self.s.tell()
+        self.s.seek(*self.args, **self.kwargs)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.s.seek(self.old_pos)
+
 class BaseField(object):
     def unpack(self, s):
-        raise NotImplementedError
+        self._data = self._unpack(s)
+
+    def _unpack(self, s):
+        raise notImplementedError
 
     def pack(self, s):
+        self._pack(s, self._data)
+
+    def _pack(self, s, data):
         raise NotImplementedError
 
     @property
@@ -35,6 +55,7 @@ class Struct(BaseField):
             f.unpack(v)
         else:
             assert False, input_type
+        return f
 
     def F(self, name, f):
         return self.add_field(name, f)
@@ -75,7 +96,7 @@ class Magic(BaseField):
         assert data == self.magic
 
     def pack(self, s):
-        data = s.write(self.magic)
+        s.write(self.magic)
 
     @property
     def data(self):
@@ -96,29 +117,20 @@ class Format(BaseField):
         self.fmt = fmt
         self.single = len(fmt) == 1
 
-    def unpack(self, s):
+    def _unpack(self, s):
         fmt = self.bosa + self.fmt
         size = calcsize(fmt)
         b = getbytes(s, size)
-        self._data = unpack(fmt, b)
-
-    def pack(self, s):
-        s.write(pack(self.fmt, *self._data))
-
-    @property
-    def data(self):
-        if self.single == 1:
-            assert len(self._data) == 1
-            return self._data[0]
-        else:
-            return self._data
-
-    @data.setter
-    def data(self, v):
+        data = unpack(fmt, b)
         if self.single:
-            self._data = (v,)
-        else:
-            self._data = v
+            assert len(data) == 1
+            data = data[0]
+        return data
+
+    def _pack(self, s, data):
+        if self.single:
+            data = (data,)
+        s.write(pack(self.fmt, *data))
 
 class BaseArray(BaseField):
     def __init__(self, field_function=None, indexed_function=None):
@@ -182,27 +194,23 @@ class Blob(BaseField):
     def __init__(self, size):
         self.size = size
 
-    def unpack(self, s):
-        self._data = getbytes(s, self.size)
+    def _unpack(self, s):
+        return getbytes(s, self.size)
 
-    def pack(self, s):
-        s.write(self._data)
+    def _pack(self, s, data):
+        s.write(data)
 
 class DependentBlob(BaseField):
     def __init__(self, prefix_field):
         self.prefix_field = prefix_field
 
-    def unpack(self, s):
-        self._data = getbytes(s, self.prefix_field.data)
+    def _unpack(self, s):
+        return getbytes(s, self.prefix_field.data)
 
-    def pack(self, s):
-        s.write(self._data)
+    def _pack(self, s, data):
+        s.write(data)
 
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
+    @BaseField.data.setter
     def data(self, v):
         self.prefix_field.data = len(v)
         self._data = v
@@ -217,27 +225,47 @@ class PrefixedBlob(DependentBlob):
         DependentBlob.pack(self, s)
 
 class String(BaseField):
-    def unpack(self, s):
+    def _unpack(self, s):
         lc = []
         c = getbyte(s)
         while c != "\0":
             lc.append(c)
             c = getbyte(s)
-        self._data = "".join(lc)
+        return "".join(lc)
 
-    def pack(self, s):
-        s.write(self._data)
+    def _pack(self, s, data):
+        s.write(data)
         s.write('\0')
+
+class FixedString(BaseField):
+    def __init__(self, size):
+        self.size = size
+
+    def _unpack(self, s):
+        data = getbytes(s, self.size)
+        data = data.rstrip("\0")
+        return data
+
+    def _pack(self, s, data):
+        data = data.ljust(self.size, "\0")
+        s.write(data)
 
 class Index(Format):
     def __init__(self, array, *args, **kwargs):
         self.array = array
         Format.__init__(self, *args, **kwargs)
 
-    @property
-    def data(self):
-        return self.array[Format.data.__get__(self)]
+    def _unpack(self, s):
+        data = Format._unpack(self, s)
+        return self.array[data]
 
-    @data.setter
-    def data(self, v):
-        Format.data.__set__(self, self.array.index(v))
+    def _pack(self, s, data):
+        data = self.array.index(data)
+        Format._pack(self, s, data)
+
+class Offset(BaseField):
+    def _unpack(self, s):
+        return s.tell()
+
+    def _pack(self, s, data):
+        self.packed_at = s.tell()
