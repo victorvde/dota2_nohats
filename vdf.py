@@ -4,7 +4,12 @@ from binary import getbyte
 def skip_space(s):
     while True:
         c = s.read(1)
-        if not c.isspace():
+        if c == "/":
+            while True:
+                c = s.read(1)
+                if c == "\n":
+                    break
+        elif not c.isspace():
             break
     return c
 
