@@ -269,3 +269,20 @@ class Offset(BaseField):
 
     def _pack(self, s, data):
         self.packed_at = s.tell()
+
+class Pointer(BaseField):
+    def __init__(self, offset, field):
+        self.offset = offset
+        self.field = field
+
+    def unpack(self, s):
+        with Seek(s, self.offset):
+            self.field.unpack(s)
+
+    @property
+    def data(self):
+        return self.field.data
+
+    @data.setter
+    def data(self, v):
+        self.field.data = v

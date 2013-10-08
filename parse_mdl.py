@@ -1,4 +1,4 @@
-from binary import Struct, Magic, Format, Offset, Seek, Array, FixedString, String
+from binary import Struct, Magic, Format, Offset, Seek, Array, FixedString, String, Pointer
 import json
 
 class MDL(Struct):
@@ -44,13 +44,11 @@ class MDL(Struct):
         self.F("localnodeindex", Format("I"))
         self.F("localnodenameindex", Format("I"))
 
+        # pointed fields
+        # self.F("localanim", Pointer(self.field["localanimoffset"].data, Array(self.field["numlocalanim"].data, LocalAnim)))
+        self.F("localsequence", Pointer(self.field["localsequenceoffset"].data, Array(self.field["numlocalsequence"].data, LocalSequence)))
+
         # rest broken due to unkown fields added
-
-        with Seek(s, self.field["localanimoffset"].data):
-            self.F("localanim", Array(self.field["numlocalanim"].data, LocalAnim))
-        with Seek(s, self.field["localsequenceoffset"].data):
-            self.F("localsequence", Array(self.field["numlocalsequence"].data, LocalSequence))
-
         return
 
         self.F("flexdesc", Format("II"))
@@ -157,7 +155,7 @@ class LocalSequence(Struct):
         self.F("labelindex", RelativeString(base, "i"))
         self.F("activitynameindex", RelativeString(base, "i"))
         self.F("flags", Format("I"))
-        self.F("activity", Format("i"))
+        self.F("activity_int", Format("i"))
         self.F("actweight", Format("I"))
         self.F("numevents", Format("I"))
         self.F("eventindex", Relative(base, "i"))
@@ -191,16 +189,14 @@ class LocalSequence(Struct):
         self.F("keyvalueindex", Relative(base, "i"))
         self.F("keyvaluesize", Format("I"))
         self.F("cycleposeindex", Relative(base, "i"))
-        self.F("overrideindex", Relative(base, "i"))
-        self.F("numoverride", Format("I"))
+        self.F("activityindex", Relative(base, "i"))
+        self.F("numactivity", Format("I"))
         self.F("unused", Format("5I"))
 
-        #with Seek(s, self.field["eventindex"].data):
-        #    self.F("event", Array(self.field["numevents"].data, Event))
-        with Seek(s, self.field["overrideindex"].data):
-            self.F("override", Array(self.field["numoverride"].data, Override))
+        # self.F("event", Pointer(self.field["eventindex"].data, Array(self.field["numevents"].data, Event)))
+        self.F("activity", Pointer(self.field["activityindex"].data, Array(self.field["numactivity"].data, Activity)))
 
-class Override(Struct):
+class Activity(Struct):
     def fields(self):
         base = self.F("base", Offset())
         self.F("szindex", RelativeString(base, "i"))
@@ -217,48 +213,13 @@ class Event(Struct):
 with open("windrunner.mdl", "rb") as s:
     m = MDL()
     m.unpack(s)
-    sequences = m.field["localsequence"].field
+    sequences = m.field["localsequence"].data
     for i in xrange(len(sequences)):
-        sequence = sequences[i].data
+        sequence = sequences[i]
         print "sequence", i
         print "--", sequence["labelindex"][1]
         print "--", sequence["activitynameindex"][1]
-        print "--", [override["szindex"][1] for override in sequence["override"]]
+        print "--", [activity["szindex"][1] for activity in sequence["activity"]]
+        print ""
 
     print json.dumps(m.data, indent=4)
-    exit(0)
-
-with open("windrunner.mdl", "rb") as s:
-    with Seek(s, localseq_offset):
-        for i in xrange(localseq_count):
-            this = s.tell()
-            baseptr, labelindex, activitynameindex, flags = getunpack(s, "<iiiI")
-            assert baseptr == -this
-
-            activity, actweight, numevents, eventindex = getunpack(s, "<iIIi")
-            bbmin = getunpack(s, "<3f")
-            bbmax = getunpack(s, "<3f")
-
-            numblends, animindex, movementindex = getunpack(s, "<Iii")
-            groupsize = getunpack(s, "<2I")
-            paramindex = getunpack(s, "<2I")
-            paramstart = getunpack(s, "<2f")
-            paramend = getunpack(s, "<2f")
-            paramparent = getunpack(s, "<I")
-
-            fadeintime, fadeouttime = getunpack(s, "<ff")
-            localentrynode, localexitnode, nodeflags = getunpack(s, "<III")
-            entryphase, exitphase, lastframe, nextseq, pose = getunpack(s, "<fffII")
-            numikrules, numautolayers, autolayerindex, weightlistindex = getunpack(s, "<IIii")
-            posekeyindex, numiklocks, iklockindex = getunpack(s, "<iIi")
-            keyvalueindex, keyvaluesize, cycleposeindex = getunpack(s, "<iIi")
-
-            unused = getunpack(s, "<7i")
-
-            with Seek(s, this + labelindex):
-                label = getstring(s, '\0')
-
-            with Seek(s, this + activitynameindex):
-                activityname = getstring(s, '\0')
-
-            print "label =", label, "+ activity =", activityname
