@@ -1,37 +1,53 @@
-from collections import OrderedDict
-from binary import getbyte, getstring
+from kvlist import KVList
+from binary import getbyte
 
 def skip_space(s):
-    c = getbyte(s)
-    while(c.isspace()):
-        c = getbyte(s)
+    while True:
+        c = s.read(1)
+        if not c.isspace():
+            break
     return c
 
+def getstring(s):
+    lc = []
+    while True:
+        c = getbyte(s)
+        if c == "\"":
+            break
+        lc.append(c)
+    return "".join(lc)
+
 def load(s):
-    c = skip_space(s)
-    assert c == '"', u"Expected string literal, got {}".format(c)
-    return OrderedDict([parse_item(s, [])])
+    items = KVList()
+    while True:
+        c = skip_space(s)
+        if c == "":
+            break
+        elif c == "\"":
+            k, v = parse_item(s, [])
+            items[k] = v
+        else:
+            assert False, u"Unexpected character '{}'".format(c)
+    return items
 
 def parse_dict(s, context):
-    d = OrderedDict()
+    d = KVList()
     while True:
         c = skip_space(s)
         if c == '}':
             break
         elif c == '"':
             k, v = parse_item(s, context)
-            if k in d:
-                del d[k]
             d[k] = v
         else:
             assert False, u"Expected '\"' or '}', got '{}' in {}".format(c, context)
     return d
 
 def parse_item(s, context):
-    k = getstring(s, '"')
+    k = getstring(s)
     c = skip_space(s)
     if c == '"':
-        v = getstring(s, '"')
+        v = getstring(s)
     elif c == '{':
         v = parse_dict(s, context+[k])
     else:
@@ -43,12 +59,12 @@ def indent(i, s):
         s.write('\t')
 
 def dump(d, s, i=0):
-    for k, v in d.iteritems():
+    for k, v in d:
         indent(i, s)
         s.write('"')
         s.write(k)
         s.write('"')
-        if isinstance(v, OrderedDict):
+        if isinstance(v, KVList):
             s.write('\n')
             indent(i, s)
             s.write('{')
@@ -64,7 +80,7 @@ def dump(d, s, i=0):
             s.write('"')
             s.write('\n')
         else:
-            assert False, u"Expected OrderedDict or basestring, got {}".format(type(v))
+            assert False, u"Expected KVList or basestring, got {}".format(type(v))
 
 if __name__ == "__main__":
     with open("items_game.txt", "rb") as input:
