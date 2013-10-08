@@ -1,5 +1,4 @@
 from kvlist import KVList
-from binary import getbyte
 
 def skip_space(s):
     while True:
@@ -16,7 +15,8 @@ def skip_space(s):
 def getstring(s):
     lc = []
     while True:
-        c = getbyte(s)
+        c = s.read(1)
+        assert c != "", "unexpected EOF"
         if c == "\"":
             break
         lc.append(c)
