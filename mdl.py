@@ -1,5 +1,4 @@
 from binary import Struct, Magic, Format, Offset, Seek, Array, FixedString, String, Pointer
-import json
 
 class MDL(Struct):
     def fields(self):
@@ -209,17 +208,3 @@ class Event(Struct):
         self.F("type", Format("I"))
         self.F("options", FixedString(64))
         self.F("szeventindex", RelativeString(base, "i"))
-
-with open("windrunner.mdl", "rb") as s:
-    m = MDL()
-    m.unpack(s)
-    sequences = m.field["localsequence"].data
-    for i in xrange(len(sequences)):
-        sequence = sequences[i]
-        print "sequence", i
-        print "--", sequence["labelindex"][1]
-        print "--", sequence["activitynameindex"][1]
-        print "--", [modifier["szindex"][1] for modifier in sequence["activitymodifier"]]
-        print ""
-
-    print json.dumps(m.data, indent=4)

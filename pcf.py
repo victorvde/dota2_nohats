@@ -63,15 +63,3 @@ class PCF(Struct):
         self.F("nelements", nelements)
         self.F("elements", DependentArray(nelements, lambda: Element(strings.data)))
         self.F("attributes", DependentArray(nelements, lambda: PrefixedArray(Format("I"), lambda: Attribute(strings.data))))
-
-with open("x.pcf", "rb") as s:
-    p = PCF()
-    p.unpack(s)
-    assert s.read(1) == ""
-    print(json.dumps(p.data, indent=4))
-with open("y.pcf", "wb") as s:
-    p.pack(s)
-q = PCF()
-q.data = p.data
-with open("z.pcf", "wb") as s:
-    q.pack(s)
