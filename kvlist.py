@@ -40,3 +40,6 @@ class KVList(MutableMapping):
             if k not in keys:
                 keys.append(k)
         return keys
+
+    def values(self):
+        return [v for k, v in self]
