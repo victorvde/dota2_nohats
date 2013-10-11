@@ -138,11 +138,8 @@ class BaseArray(BaseField):
             indexed_function = lambda i: field_function()
         self.field_fun = indexed_function
 
-    def array_size(self):
-        raise NotImplementedError
-
     def unpack(self, s):
-        self.field = [self.field_fun(i) for i in xrange(self.array_size())]
+        self.field = [self.field_fun(i) for i in xrange(self.size)]
         for f in self.field:
             f.unpack(s)
 
@@ -156,7 +153,7 @@ class BaseArray(BaseField):
 
     @data.setter
     def data(self, v):
-        self.field = [self.field_fun(i) for i in xrange(self.array_size())]
+        self.field = [self.field_fun(i) for i in xrange(self.size)]
         for f, fv in zip(self.field, v):
             f.data = fv
 
@@ -165,64 +162,62 @@ class Array(BaseArray):
         self.size = size
         BaseArray.__init__(self, *args, **kwargs)
 
-    def array_size(self):
-        return self.size
-
-class DependentArray(BaseArray):
+class PrefixedArray(BaseArray):
     def __init__(self, prefix_field, *args, **kwargs):
         self.prefix_field = prefix_field
         BaseArray.__init__(self, *args, **kwargs)
 
-    def array_size(self):
+    @property
+    def size(self):
         return self.prefix_field.data
+
+    def unpack(self, s):
+        self.prefix_field.unpack(s)
+        BaseArray.unpack(self, s)
+
+    def pack(self, s):
+        self.prefix_field.data = len(self.field)
+        self.prefix_field.pack(s)
+        BaseArray.pack(self, s)
 
     @BaseArray.data.setter
     def data(self, v):
         self.prefix_field.data = len(v)
         BaseArray.data.__set__(self, v)
 
-class PrefixedArray(DependentArray):
-    def unpack(self, s):
-        self.prefix_field.unpack(s)
-        DependentArray.unpack(self, s)
-
-    def pack(self, s):
-        self.prefix_field.pack(s)
-        DependentArray.pack(self, s)
-
-class Blob(BaseField):
-    def __init__(self, size):
-        self.size = size
-
+class BaseBlob(BaseField):
     def _unpack(self, s):
         return getbytes(s, self.size)
 
     def _pack(self, s, data):
         s.write(data)
 
-class DependentBlob(BaseField):
-    def __init__(self, prefix_field):
+class Blob(BaseBlob):
+    def __init__(self, size):
+        self.size = size
+
+class PrefixedBlob(BaseBlob):
+    def __init__(self, prefix_field, *args, **kwargs):
         self.prefix_field = prefix_field
+        BaseBlob.__init__(self, *args, **kwargs)
 
-    def _unpack(self, s):
-        return getbytes(s, self.prefix_field.data)
+    @property
+    def size(self):
+        return self.prefix_field.data
 
-    def _pack(self, s, data):
-        s.write(data)
-
-    @BaseField.data.setter
-    def data(self, v):
-        self.prefix_field.data = len(v)
-        self._data = v
-
-class PrefixedBlob(DependentBlob):
     def unpack(self, s):
         self.prefix_field.unpack(s)
-        DependentBlob.unpack(self, s)
+        BaseBlob.unpack(self, s)
 
     def pack(self, s):
+        self.prefix_field.data = len(self.field)
         self.prefix_field.pack(s)
-        DependentBlob.pack(self, s)
+        BaseBlob.pack(self, s)
+
+    @BaseBlob.data.setter
+    def data(self, v):
+        self.prefix_field.data = len(v)
+        BaseBlob.data.__set__(self, v)
 
 class String(BaseField):
     def _unpack(self, s):
@@ -250,18 +245,18 @@ class FixedString(BaseField):
         data = data.ljust(self.size, "\0")
         s.write(data)
 
-class Index(Format):
-    def __init__(self, array, *args, **kwargs):
+class Index(BaseField):
+    def __init__(self, array, index_field):
         self.array = array
-        Format.__init__(self, *args, **kwargs)
+        self.index_field = index_field
 
     def _unpack(self, s):
-        data = Format._unpack(self, s)
-        return self.array[data]
+        self.index_field.unpack(s)
+        return self.array[self.index_field.data]
 
     def _pack(self, s, data):
-        data = self.array.index(data)
-        Format._pack(self, s, data)
+        self.index_field.data = self.array.index(data)
+        self.index_field.pack(s)
 
 class Offset(BaseField):
     def _unpack(self, s):

@@ -1,4 +1,4 @@
-from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, DependentArray, Index
+from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, Array, Index, FixedString
 import json
 from uuid import UUID
 
@@ -14,11 +14,12 @@ class UUIDField(Blob):
         Blob._pack(self, s, UUID(data).bytes)
 
 class Attribute(Struct):
-    def __init__(self, strings):
-        self.strings = strings
+    def __init__(self, namefield, stringfield):
+        self.namefield = namefield
+        self.stringfield = stringfield
 
     def fields(self):
-        self.F("name", Index(self.strings, "I"))
+        self.F("name", self.namefield())
         type = self.F("type", Format("B")).data
 
         attribute_types = {
@@ -26,7 +27,7 @@ class Attribute(Struct):
             2 : lambda: Format("I"), # integer
             3 : lambda: Format("f"), # float
             4 : lambda: Format("?"), # bool
-            5 : lambda: Index(self.strings, "I"), # string
+            5 : self.stringfield, # string
             6 : lambda: PrefixedBlob(Format("I")), # blob
             7 : lambda: Format("I"), # time
             8 : lambda: Format("4B"), # color
@@ -46,20 +47,34 @@ class Attribute(Struct):
             assert False, type
 
 class Element(Struct):
-    def __init__(self, strings):
-        self.strings = strings
+    def __init__(self, namefield, stringfield):
+        self.namefield = namefield
+        self.stringfield = stringfield
 
     def fields(self):
-        self.F("type", Index(self.strings, "I"))
-        self.F("name", Index(self.strings, "I"))
+        self.F("type", self.namefield())
+        self.F("name", self.stringfield())
         self.F("guid", UUIDField())
 
 class PCF(Struct):
     def fields(self):
-        self.F("magic", Magic("<!-- dmx encoding binary 5 format pcf 2 -->\n\0"))
-        strings = PrefixedArray(Format("I"), String)
-        self.F("strings", strings)
-        nelements = Format("I")
-        self.F("nelements", nelements)
-        self.F("elements", DependentArray(nelements, lambda: Element(strings.data)))
-        self.F("attributes", DependentArray(nelements, lambda: PrefixedArray(Format("I"), lambda: Attribute(strings.data))))
+        self.F("magic", Magic("<!-- dmx encoding "))
+        self.F("version", FixedString(len("binary 2 format pcf 1")))
+        self.F("magic2", Magic(" -->\n\0"))
+        version = self.field["version"].data
+        assert version in ["binary 2 format pcf 1", "binary 5 format pcf 2"], version
+
+        if version == "binary 2 format pcf 1":
+            prefix = Format("h")
+        else:
+            prefix = Format("I")
+        strings = self.F("strings", PrefixedArray(prefix, String))
+
+        if version == "binary 2 format pcf 1":
+            namefield = lambda: Index(strings.data, Format("h"))
+            stringfield = String
+        else:
+            namefield = lambda: Index(strings.data, Format("I"))
+            stringfield = namefield
+        self.F("elements", PrefixedArray(Format("I"), lambda: Element(namefield, stringfield)))
+        self.F("attributes", Array(len(self.field["elements"].field), lambda: PrefixedArray(Format("I"), lambda: Attribute(namefield, stringfield))))
