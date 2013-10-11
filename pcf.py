@@ -57,6 +57,9 @@ class Element(Struct):
         self.F("guid", UUIDField())
 
 class PCF(Struct):
+    def __init__(self, include_attributes=True):
+        self.include_attributes = include_attributes
+
     def fields(self):
         self.F("magic", Magic("<!-- dmx encoding "))
         self.F("version", FixedString(len("binary 2 format pcf 1")))
@@ -71,10 +74,11 @@ class PCF(Struct):
         strings = self.F("strings", PrefixedArray(prefix, String))
 
         if version == "binary 2 format pcf 1":
-            namefield = lambda: Index(strings.data, Format("h"))
+            namefield = lambda: Index(strings, Format("h"))
             stringfield = String
         else:
-            namefield = lambda: Index(strings.data, Format("I"))
+            namefield = lambda: Index(strings, Format("I"))
             stringfield = namefield
         self.F("elements", PrefixedArray(Format("I"), lambda: Element(namefield, stringfield)))
-        self.F("attributes", Array(len(self.field["elements"].field), lambda: PrefixedArray(Format("I"), lambda: Attribute(namefield, stringfield))))
+        if self.include_attributes:
+            self.F("attributes", Array(len(self.field["elements"].field), lambda: PrefixedArray(Format("I"), lambda: Attribute(namefield, stringfield))))

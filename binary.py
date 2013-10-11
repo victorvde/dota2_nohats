@@ -252,7 +252,7 @@ class Index(BaseField):
 
     def _unpack(self, s):
         self.index_field.unpack(s)
-        return self.array[self.index_field.data]
+        return self.array.field[self.index_field.data].data
 
     def _pack(self, s, data):
         self.index_field.data = self.array.index(data)
