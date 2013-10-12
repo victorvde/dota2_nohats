@@ -1,38 +1,44 @@
 from vdf import load, dump
 from os.path import abspath, exists, dirname, join
-from sys import argv, stdout
+from sys import argv, stdout, stderr
 from shutil import copyfile
 from os import makedirs, listdir
 from kvlist import KVList
 from mdl import MDL
-import wave
+from pcf import PCF
+from wave import open as wave_open
+from collections import OrderedDict
+from io import BytesIO
+from itertools import chain
 
 def nohats():
     with open(join(dota_dir, "scripts/items/items_game.txt"), "rb") as input:
         d = load(input)
 
     defaults = get_defaults(d)
-    #fix_models(d, defaults)
+    fix_models(d, defaults)
     visuals = get_visuals(d)
     visuals = filter_visuals(visuals)
-    #visuals = fix_style_models(d, visuals, defaults)
+    visuals = fix_style_models(d, visuals, defaults)
     visuals = fix_sounds(visuals)
-    #visuals = fix_hero_icons(visuals)
-    #visuals = fix_ability_icons(visuals)
-    #units = get_units()
-    #visuals = fix_summons(visuals, units)
-    #visuals = fix_hero_forms(visuals)
-    #visuals = fix_couriers(visuals, units)
-    #visuals = fix_flying_couriers(visuals, units)
-    #visuals = fix_animations(d, visuals)
+    visuals = fix_hero_icons(visuals)
+    visuals = fix_ability_icons(visuals)
+    units = get_units()
+    visuals = fix_summons(visuals, units)
+    visuals = fix_hero_forms(visuals)
+    visuals = fix_particle_snapshots(visuals)
+    visuals = fix_couriers(visuals, units)
+    visuals = fix_flying_couriers(visuals, units)
+    npc_heroes = get_npc_heroes()
+    visuals = fix_animations(d, visuals, npc_heroes)
+    visuals = fix_particles(d, defaults, visuals, units, npc_heroes)
 
-    x, y = filtersplit(visuals, isvisualtype(None))
+    x, y = filtersplit(visuals, lambda (id, k, v): not k.startswith("asset_modifier"))
     print x
     left = set()
-    for e in visuals:
+    for e in y:
         id, k, v = e
-        if isinstance(v, KVList):
-            left.add(v.get("type"))
+        left.add(v.get("type"))
     print left
 
 def get_attrib(d, item, key):
@@ -73,12 +79,14 @@ def get_defaults(d):
                 defaults[(hero, slot)] = id
     return defaults
 
-def get_default_model(d, defaults, hero, slot):
+def get_default_item(d, defaults, item):
+    hero = get_hero(d, item)
+    slot = get_slot(d, item)
     default_id = defaults.get((hero, slot))
     if default_id is None:
         return None
-    default_item = d["items_game"]["items"][default_id]
-    return default_item["model_player"]
+    default_item = get_item(d, default_id)
+    return default_item
 
 def copy(src, dest):
     print u"copy '{}' to '{}'".format(src, dest)
@@ -106,14 +114,10 @@ def fix_models(d, defaults):
             continue
         if not "model_player" in item:
             continue
-        hero = get_hero(d, item)
-        slot = get_slot(d, item)
-        if hero is None:
-            assert slot == "none" or slot in d["items_game"]["player_loadout_slots"].values(), slot
-        else:
-            default_model = get_default_model(d, defaults, hero, slot)
-            if default_model is not None:
-                copy_model(default_model, item["model_player"])
+        if "model_player" in item:
+            default_item = get_default_item(d, defaults, item)
+            if default_item is not None:
+                copy_model(default_item["model_player"], item["model_player"])
             else:
                 copy_model("models/development/invisiblebox.mdl", item["model_player"])
 
@@ -130,12 +134,18 @@ def get_visuals(d):
     return visuals
 
 def filter_visuals(visuals):
-    # ignore skip_model_combine
-    visuals = filter(lambda (id, k, v): not(k == "skip_model_combine" and v == "1"), visuals)
+    # particle systems are handled seperately as a group per item
+    visuals = filter(lambda (id, k, v): not k.startswith("attached_particlesystem"), visuals)
 
-    # ignore some crap
+    # random stuff
+    visuals = filter(lambda (id, k, v): not k == "skip_model_combine", visuals)
+    visuals = filter(lambda (id, k, v): not k == "skin", visuals)
+    visuals = filter(lambda (id, k, v): not k == "alternate_icons", visuals)
+    visuals = filter(lambda (id, k, v): not k == "animation_modifiers", visuals)
+
     ignore_types = ["announcer", "announcer_preview", "ability_name", "entity_scale", "hud_skin", "speech", "particle_control_point"]
-    visuals = filter(lambda (id, k, v): not(isinstance(v, KVList) and v.get("type") in ignore_types), visuals)
+    to_ignore = invisualtypes(ignore_types)
+    visuals = filter(lambda x: not to_ignore(x), visuals)
 
     return visuals
 
@@ -150,28 +160,28 @@ def filtersplit(l, f):
     return (a, b)
 
 def fix_style_models(d, visuals, defaults):
-    # fix alternate style models
     styles_visuals, visuals = filtersplit(visuals, lambda (id, k, v): k == "styles")
     for id, _, visual in styles_visuals:
         item = get_item(d, id)
-        hero = get_hero(d, item)
-        slot = get_slot(d, item)
-        default_model = get_default_model(d, defaults, hero, slot)
+        default_item = get_default_item(d, defaults, item)
         for styleid, v in visual:
             if not "model_player" in v:
                 continue
-            if default_model is not None:
-                copy_model(default_model, v["model_player"])
+            if default_item is not None:
+                copy_model(default_item["model_player"], v["model_player"])
             else:
                 copy_model("models/development/invisiblebox.mdl", v["model_player"])
 
     return visuals
 
-def isvisualtype(type):
+def invisualtypes(types):
     def filter(e):
         id, k, v = e
-        return isinstance(v, KVList) and v.get("type") == type
+        return k.startswith("asset_modifier") and v.get("type") in types
     return filter
+
+def isvisualtype(type):
+    return invisualtypes([type])
 
 def assetmodifier1(visual):
     type = visual.pop("type")
@@ -199,7 +209,7 @@ def copy_wave(src, dest):
     print u"copy wave '{}' to '{}'".format(src, dest)
     src = join(dota_dir, src)
     try:
-        input = wave.open(src, "rb")
+        input = wave_open(src, "rb")
         frames_available = input.getnframes()
         # fill to two seconds because of noise
         frames_needed = 2 * input.getframerate()
@@ -214,7 +224,7 @@ def copy_wave(src, dest):
             makedirs(dest_dir)
 
         try:
-            output = wave.open(dest, "wb")
+            output = wave_open(dest, "wb")
             output.setparams(input.getparams())
             output.writeframes(input.readframes(frames_available) + filler_frames)
         finally:
@@ -325,7 +335,12 @@ def fix_flying_couriers(visuals, units):
 
     return visuals
 
-def fix_animations(d, visuals):
+def get_npc_heroes():
+    with open(join(dota_dir, "scripts/npc/npc_heroes.txt")) as input:
+        npc_heroes = load(input)
+    return npc_heroes
+
+def fix_animations(d, visuals, npc_heroes):
     item_activities = {}
     activity_visuals, visuals = filtersplit(visuals, isvisualtype("activity"))
     for id, key, visual in activity_visuals:
@@ -336,9 +351,6 @@ def fix_animations(d, visuals):
         hero = get_hero(d, item)
         item_activities.setdefault(hero, set())
         item_activities[hero].add(modifier)
-
-    with open(join(dota_dir, "scripts/npc/npc_heroes.txt")) as input:
-        npc_heroes = load(input)
 
     for hero in item_activities.keys():
         model = npc_heroes["DOTAHeroes"][hero]["Model"]
@@ -352,7 +364,6 @@ def fix_animations(d, visuals):
                     mung_offsets.add(activitymodifier["szindex"][0])
 
         copy(model, model)
-        print u"Removing sequences with modifier {}".format(item_activities[hero])
         if nohats_dir is None:
             continue
         with open(join(nohats_dir, model), "r+b") as s:
@@ -364,6 +375,152 @@ def fix_animations(d, visuals):
 
     return visuals
 
+def get_particlesystems(item):
+    pss = []
+    if item is not None:
+        for key, v in item.get("visuals", []):
+            if key.startswith("attached_particlesystem"):
+                if v["system"] == "chaos_knight_horse_ambient_parent":
+                    pss.append("chaos_knight_horse_ambient")
+                    pss.append("chaos_knight_ambient_tail")
+                elif v["system"] not in pss:
+                    pss.append(v["system"])
+    return pss
+
+def get_particle_replacements(d, defaults, visuals):
+    particle_replacements = OrderedDict()
+    def add_replacement(system, default_system):
+        if system in particle_replacements:
+            assert particle_replacements[system] == default_system
+        else:
+            particle_replacements[system] = default_system
+
+    default_particlesystems = set()
+    for id, item in d["items_game"]["items"]:
+        if not is_default(d, item):
+            continue
+        for ps in get_particlesystems(item):
+            default_particlesystems.add(ps)
+
+    for id, item in d["items_game"]["items"]:
+        if id == "default" or is_default(d, item):
+            continue
+
+        default_item = get_default_item(d, defaults, item)
+        pss = get_particlesystems(item)
+        default_pss = get_particlesystems(default_item)
+        for default_ps in list(default_pss):
+            if default_ps in pss:
+                default_pss.remove(default_ps)
+                pss.remove(default_ps)
+
+        while pss:
+            ps = pss.pop(0)
+            if ps in default_particlesystems:
+                continue
+            if default_pss:
+                default_ps = default_pss.pop(0)
+            else:
+                default_ps = None
+            add_replacement(ps, default_ps)
+
+    particle_visuals, visuals = filtersplit(visuals, isvisualtype("particle"))
+    for id, k, v in particle_visuals:
+        asset, modifier = assetmodifier1(v)
+        item = get_item(d, id)
+        add_replacement(modifier, asset)
+
+    forwarded_particle_replacements = OrderedDict()
+    for system, default_system in particle_replacements.iteritems():
+        while default_system in particle_replacements:
+            default_system = particle_replacements[default_system]
+        forwarded_particle_replacements[system] = default_system
+
+    return visuals, forwarded_particle_replacements
+
+def get_particle_file_systems(d, units, npc_heroes):
+    files = []
+
+    with open(join(dota_dir, "particles/particles_manifest.txt"), "rb") as s:
+        l = s.readline().rstrip("\r\n")
+        l = "\"" + l + "\""
+        l += s.read()
+    m = load(BytesIO(l))
+    for k, v in m["particles_manifest"]:
+        assert k == "file", k
+        if v.startswith("!"):
+            v = v[1:]
+        files.append(v)
+
+    for id, item in d["items_game"]["items"]:
+        if "particle_file" in item and item["particle_file"] not in files:
+            files.append(item["particle_file"])
+
+    for id, item in chain(units["DOTAUnits"], npc_heroes["DOTAHeroes"]):
+        if "ParticleFile" in item and item["ParticleFile"] not in files:
+            files.append(item["ParticleFile"])
+
+    particle_file_systems = {}
+    for file in files:
+        if not exists(join(dota_dir, file)):
+            continue
+        particle_file_systems[file] = []
+        pcf = PCF(include_attributes=False)
+        with open(join(dota_dir, file), "rb") as s:
+            pcf.unpack(s)
+        for e in pcf.field["elements"].data:
+            if e["type"] == "DmeParticleSystemDefinition":
+                if e["name"] not in particle_file_systems[file]:
+                    particle_file_systems[file].append(e["name"])
+
+    return particle_file_systems
+
+def fix_particles(d, defaults, visuals, units, npc_heroes):
+    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals)
+
+    particle_file_systems = get_particle_file_systems(d, units, npc_heroes)
+
+    particlesystem_files = {}
+    for file, systems in particle_file_systems.iteritems():
+        for system in systems:
+            particlesystem_files.setdefault(system, [])
+            particlesystem_files[system].append(file)
+
+    file_replacements = OrderedDict()
+    for system, default_system in particle_replacements.iteritems():
+        if system not in particlesystem_files:
+            print >> stderr, u"Warning: system '{}' is not in any particle file".format(system)
+            continue
+        system_files = particlesystem_files[system]
+        if default_system is None:
+            default_system_files = []
+        else:
+            default_system_files = particlesystem_files.get(default_system, [])
+            if default_system_files == []:
+                if "_active" in default_system or "_passive" in default_system:
+                    # pseudo-system for item triggered particle effects
+                    pass
+                else:
+                    print >> stderr, u"Warning: default system '{}' is not in any particle file".format(default_system)
+
+        for file in system_files:
+            file_replacements.setdefault(file, OrderedDict())
+            if default_system_files == []:
+                file_replacements[file][system] = None
+            else:
+                # TODO: figure out the right choice when len(default_system_files) > 1
+                file_replacements[file][system] = (default_system_files[0], default_system)
+
+    for file, replacements in file_replacements.iteritems():
+        print u"{}:".format(file)
+        for system, replacement in replacements.iteritems():
+            if replacement is None:
+                print u"\t{} -> None".format(system)
+            else:
+                replacement_file, replacement_system = replacement
+                print u"\t{} -> {} ({})".format(system, replacement_system, replacement_file)
+
+    return visuals
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
