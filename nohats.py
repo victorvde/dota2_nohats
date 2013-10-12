@@ -380,10 +380,7 @@ def get_particlesystems(item):
     if item is not None:
         for key, v in item.get("visuals", []):
             if key.startswith("attached_particlesystem"):
-                if v["system"] == "chaos_knight_horse_ambient_parent":
-                    pss.append("chaos_knight_horse_ambient")
-                    pss.append("chaos_knight_ambient_tail")
-                elif v["system"] not in pss:
+                if v["system"] not in pss:
                     pss.append(v["system"])
     return pss
 
