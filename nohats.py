@@ -100,6 +100,8 @@ def copy(src, dest):
     copyfile(src, dest)
 
 def copy_model(src, dest):
+    if src == dest:
+        return
     assert src.endswith(".mdl")
     src = src[:-len(".mdl")]
     assert dest.endswith(".mdl")
@@ -107,6 +109,13 @@ def copy_model(src, dest):
     copy(src + ".mdl", dest + ".mdl")
     copy(src + ".vvd", dest + ".vvd")
     copy(src + ".dx90.vtx", dest + ".dx90.vtx")
+    if exists(join(dota_dir, src + ".cloth")):
+        copy(src + ".cloth", dest + ".cloth")
+    elif exists(join(dota_dir, dest + ".cloth")):
+        print u"Create empty cloth file '{}'".format(dest + ".cloth")
+        if nohats_dir:
+            with open(join(nohats_dir, dest + ".cloth"), "rb") as s:
+                s.write("ClothSystem\n{\n}\n")
 
 def fix_models(d, defaults):
     for id, item in d["items_game"]["items"]:
@@ -406,6 +415,9 @@ def get_particle_replacements(d, defaults, visuals):
         default_item = get_default_item(d, defaults, item)
         pss = get_particlesystems(item)
         default_pss = get_particlesystems(default_item)
+        if default_pss and pss and len(pss) < len(default_pss):
+            print >> stderr, u"Warning: couldn't put default particle systems '{}' in '{}' ({})".format(default_pss, pss, id)
+
         for default_ps in list(default_pss):
             if default_ps in pss:
                 default_pss.remove(default_ps)
@@ -414,6 +426,7 @@ def get_particle_replacements(d, defaults, visuals):
         while pss:
             ps = pss.pop(0)
             if ps in default_particlesystems:
+                print >> stderr, u"Warning: tried to override default particle system '{}' ({})".format(ps, id)
                 continue
             if default_pss:
                 default_ps = default_pss.pop(0)
@@ -460,6 +473,7 @@ def get_particle_file_systems(d, units, npc_heroes):
     particle_file_systems = {}
     for file in files:
         if not exists(join(dota_dir, file)):
+            print u"Warning: referenced particle file '{}' doesn't exist.".format(file)
             continue
         particle_file_systems[file] = []
         pcf = PCF(include_attributes=False)
