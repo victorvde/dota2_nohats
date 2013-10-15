@@ -10,6 +10,7 @@ from wave import open as wave_open
 from collections import OrderedDict
 from io import BytesIO
 from itertools import chain
+from binary import FakeWriteStream
 
 def header(s):
     print u"== {} ==".format(s)
@@ -586,6 +587,9 @@ def fix_particles(d, defaults, visuals, units, npc_heroes):
                 makedirs(dest_dir)
             with open(dest, "wb") as s:
                 p.full_pack(s)
+        else:
+            s = FakeWriteStream(0, file)
+            p.full_pack(s)
 
     return visuals
 
