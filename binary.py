@@ -24,8 +24,9 @@ class Seek(object):
         self.s.seek(self.old_pos)
 
 class FakeWriteStream(object):
-    def __init__(self, offset):
+    def __init__(self, offset, name):
         self.offset = offset
+        self.name = name
 
     def seek(self, offset):
         self.offset = offset
@@ -53,7 +54,7 @@ class BaseField(object):
         new_data = self.data
         while True:
             old_data = new_data
-            self.pack(FakeWriteStream(s.tell()))
+            self.pack(FakeWriteStream(s.tell(), s.name))
             new_data = self.data
             if old_data == new_data:
                 break
