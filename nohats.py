@@ -531,6 +531,44 @@ def fix_particles(d, defaults, visuals, units, npc_heroes):
                 replacement_file, replacement_system = replacement
                 print u"\t{} -> {} ({})".format(system, replacement_system, replacement_file)
 
+        p = PCF()
+        with open(join(dota_dir, file), "rb") as s:
+            p.unpack(s)
+        p.minimize()
+        main_element = p.field["elements"].field[0]
+        assert main_element.field["type"].data == "DmElement"
+        assert len(main_element.attribute.field) == 1
+        main_attribute = main_element.attribute.field[0]
+        assert main_attribute.field["name"].data == "particleSystemDefinitions"
+        assert main_attribute.field["type"].data == 15
+        psdl = main_attribute.field["data"].field
+        for i in xrange(len(psdl)):
+            psd = psdl[i].data
+            assert psd.field["type"].data == "DmeParticleSystemDefinition"
+            name = psd.field["name"].data
+            if name in replacements:
+                if replacements[name] is None:
+                    psd.attribute.data = []
+                else:
+                    replacement_file, replacement_system = replacements[name]
+                    o = PCF()
+                    with open(join(dota_dir, replacement_file), "rb") as s:
+                        o.unpack(s)
+                    for e in o.field["elements"].field:
+                        if e.field["type"].data == "DmeParticleSystemDefinition" and e.field["name"].data == replacement_system:
+                            psd.attribute.data = e.attribute.data
+                            break
+                del replacements[name]
+        assert not replacements
+
+        if nohats_dir:
+            dest = join(nohats_dir, file)
+            dest_dir = dirname(dest)
+            if not exists(dest_dir):
+                makedirs(dest_dir)
+            with open(dest, "wb") as s:
+                p.full_pack(s)
+
     return visuals
 
 if __name__ == "__main__":
