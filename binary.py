@@ -109,7 +109,6 @@ class Struct(BaseField):
             data[k] = v.serialize()
         return data
 
-
     def fields(self):
         raise NotImplementedError
 
@@ -185,6 +184,11 @@ class BaseArray(BaseField):
 
     def serialize(self):
         return [f.serialize() for f in self.field]
+
+    def append_data(self, v):
+        f = self.field_fun(len(self.field), self)
+        self.field.append(f)
+        f.data = v
 
 class Array(BaseArray):
     def __init__(self, size, *args, **kwargs):

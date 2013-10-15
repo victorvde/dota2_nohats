@@ -24,11 +24,15 @@ class ElementIndex(BaseField):
         return self.elements.field[self.index_field.data]
 
     def pack_data(self, s, data):
-        if data not in self.elements.field:
+        try:
+            index = self.elements.field.index(data)
+        except ValueError:
             data.new_guid()
-            self.elements.data = self.elements.data + [data.data]
-            self.attributes.data = self.attributes.data + [data.attribute.data]
-        self.index_field.data = self.elements.field.index(data)
+            index = len(self.elements.field)
+            self.elements.append_data(data.data)
+            self.attributes.append_data(data.attribute.data)
+            self.elements.field[index].attribute = self.attributes.field[index]
+        self.index_field.data = index
         self.index_field.pack(s)
 
     def serialize(self):
@@ -119,3 +123,9 @@ class PCF(Struct):
                             lambda: ElementIndex(self.field["elements"], f, Format("I"))))))
             for i in xrange(len(self.field["elements"].field)):
                 self.field["elements"].field[i].attribute = self.field["attributes"].field[i]
+
+    def minimize(self):
+        self.field["strings"].data = []
+        self.field["elements"].data = [self.field["elements"].data[0]]
+        self.field["attributes"].data = [self.field["attributes"].data[0]]
+        self.field["elements"].field[0].attribute = self.field["attributes"].field[0]
