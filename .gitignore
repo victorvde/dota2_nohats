@@ -1,0 +1,8 @@
+*.pyc
+*.pcf
+*.txt
+*.mdl
+*.exe
+Include
+Lib
+Scripts
