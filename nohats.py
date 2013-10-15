@@ -11,26 +11,43 @@ from collections import OrderedDict
 from io import BytesIO
 from itertools import chain
 
+def header(s):
+    print u"== {} ==".format(s)
+
 def nohats():
+    header("Loading items_game.txt")
     with open(join(dota_dir, "scripts/items/items_game.txt"), "rb") as input:
         d = load(input)
-
+    header("Getting defaults")
     defaults = get_defaults(d)
+    header("Fixing simple model files")
     fix_models(d, defaults)
+    header("Getting visuals")
     visuals = get_visuals(d)
     visuals = filter_visuals(visuals)
+    header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
+    header("Fixing sounds")
     visuals = fix_sounds(visuals)
+    header("Fixing icons")
     visuals = fix_hero_icons(visuals)
     visuals = fix_ability_icons(visuals)
+    header("Loading npc_units.txt")
     units = get_units()
+    header("Fixing summons")
     visuals = fix_summons(visuals, units)
+    header("Fixing alternate hero models")
     visuals = fix_hero_forms(visuals)
+    header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
+    header("Fixing couriers")
     visuals = fix_couriers(visuals, units)
     visuals = fix_flying_couriers(visuals, units)
+    header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
+    header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
+    header("Fixing particles")
     visuals = fix_particles(d, defaults, visuals, units, npc_heroes)
 
     x, y = filtersplit(visuals, lambda (id, k, v): not k.startswith("asset_modifier"))
@@ -114,7 +131,7 @@ def copy_model(src, dest):
     elif exists(join(dota_dir, dest + ".cloth")):
         print u"Create empty cloth file '{}'".format(dest + ".cloth")
         if nohats_dir:
-            with open(join(nohats_dir, dest + ".cloth"), "rb") as s:
+            with open(join(nohats_dir, dest + ".cloth"), "wb") as s:
                 s.write("ClothSystem\n{\n}\n")
 
 def fix_models(d, defaults):
@@ -148,7 +165,6 @@ def filter_visuals(visuals):
 
     # random stuff
     visuals = filter(lambda (id, k, v): not k == "skip_model_combine", visuals)
-    visuals = filter(lambda (id, k, v): not k == "skin", visuals)
     visuals = filter(lambda (id, k, v): not k == "alternate_icons", visuals)
     visuals = filter(lambda (id, k, v): not k == "animation_modifiers", visuals)
 
@@ -473,7 +489,7 @@ def get_particle_file_systems(d, units, npc_heroes):
     particle_file_systems = {}
     for file in files:
         if not exists(join(dota_dir, file)):
-            print u"Warning: referenced particle file '{}' doesn't exist.".format(file)
+            print >> stderr, u"Warning: referenced particle file '{}' doesn't exist.".format(file)
             continue
         particle_file_systems[file] = []
         pcf = PCF(include_attributes=False)
