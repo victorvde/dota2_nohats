@@ -63,10 +63,29 @@ class BaseField(object):
     def serialize(self):
         return self.data
 
-class Struct(BaseField):
+class ContainerField(BaseField):
+    def __getitem__(self, key):
+        return self.field[key]
+
+    def __setitem__(self, key, value):
+        self.field[key] = value
+
+    def __delitem__(self, key):
+        del self.field[key]
+
+    def __len__(self):
+        return len(self.field)
+
+    def __iter__(self):
+        return iter(self.field)
+
+    def __contains__(self, key):
+        return key in self.field
+
+class Struct(ContainerField):
     def add_field(self, name, f):
-        assert name not in self.field, name
-        self.field[name] = f
+        assert name not in self, name
+        self[name] = f
         input_type, v = self.input
         if input_type == "data":
             f.data = v.get(name, None)
@@ -157,7 +176,7 @@ class Format(BaseField):
             data = (data,)
         s.write(pack(self.fmt, *data))
 
-class BaseArray(BaseField):
+class BaseArray(ContainerField):
     def __init__(self, field_maker=None, field_function=None):
         if field_function is None:
             field_function = lambda i, f: field_maker()
@@ -165,16 +184,16 @@ class BaseArray(BaseField):
 
     def unpack(self, s):
         self.field = [self.field_fun(i, self) for i in xrange(self.size)]
-        for f in self.field:
+        for f in self:
             f.unpack(s)
 
     def pack(self, s):
-        for f in self.field:
+        for f in self:
             f.pack(s)
 
     @property
     def data(self):
-        return [f.data for f in self.field]
+        return [f.data for f in self]
 
     @data.setter
     def data(self, v):
@@ -183,7 +202,7 @@ class BaseArray(BaseField):
             f.data = fv
 
     def serialize(self):
-        return [f.serialize() for f in self.field]
+        return [f.serialize() for f in self]
 
     def append_data(self, v):
         f = self.field_fun(len(self.field), self)
@@ -209,7 +228,7 @@ class PrefixedArray(BaseArray):
         BaseArray.unpack(self, s)
 
     def pack(self, s):
-        self.prefix_field.data = len(self.field)
+        self.prefix_field.data = len(self)
         self.prefix_field.pack(s)
         BaseArray.pack(self, s)
 
@@ -238,7 +257,7 @@ class PrefixedBlob(BaseBlob):
         BaseBlob.unpack(self, s)
 
     def pack(self, s):
-        self.prefix_field.data = len(self.field)
+        self.prefix_field.data = len(self)
         self.prefix_field.pack(s)
         BaseBlob.pack(self, s)
 
@@ -275,12 +294,15 @@ class Index(BaseField):
 
     def unpack_data(self, s):
         self.index_field.unpack(s)
-        return self.array.field[self.index_field.data].data
+        return self.array[self.index_field.data].data
 
     def pack_data(self, s, data):
-        if data not in self.array.data:
-            self.array.data = self.array.data + [data]
-        self.index_field.data = self.array.data.index(data)
+        try:
+            index = self.array.data.index(data)
+        except ValueError:
+            index = len(self.array)
+            self.array.append_data(data)
+        self.index_field.data = index
         self.index_field.pack(s)
 
 class Offset(BaseField):

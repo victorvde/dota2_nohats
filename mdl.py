@@ -44,12 +44,12 @@ class MDL(Struct):
         self.F("localnodenameindex", Format("I"))
 
         # pointed fields
-        # self.F("localanim", Pointer(self.field["localanimoffset"].data, Array(self.field["numlocalanim"].data, LocalAnim)))
-        self.F("localsequence", Pointer(self.field["localsequenceoffset"].data, Array(self.field["numlocalsequence"].data, LocalSequence)))
+        # self.F("localanim", Pointer(self["localanimoffset"].data, Array(self["numlocalanim"].data, LocalAnim)))
+        self.F("localsequence", Pointer(self["localsequenceoffset"].data, Array(self["numlocalsequence"].data, LocalSequence)))
         self.F("skin",
-            Pointer(self.field["skinindex"].data,
-                Array(self.field["numskinfamilies"].data,
-                    lambda: Array(self.field["numskinref"].data,
+            Pointer(self["skinindex"].data,
+                Array(self["numskinfamilies"].data,
+                    lambda: Array(self["numskinref"].data,
                         lambda: Format("h")))))
 
         # rest broken due to unkown fields added
@@ -198,8 +198,8 @@ class LocalSequence(Struct):
         self.F("numactivitymodifier", Format("I"))
         self.F("unused", Format("5I"))
 
-        # self.F("event", Pointer(self.field["eventindex"].data, Array(self.field["numevents"].data, Event)))
-        self.F("activitymodifier", Pointer(self.field["activitymodifierindex"].data, Array(self.field["numactivitymodifier"].data, ActivityModifier)))
+        # self.F("event", Pointer(self["eventindex"].data, Array(self["numevents"].data, Event)))
+        self.F("activitymodifier", Pointer(self["activitymodifierindex"].data, Array(self["numactivitymodifier"].data, ActivityModifier)))
 
 class ActivityModifier(Struct):
     def fields(self):

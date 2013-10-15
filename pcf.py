@@ -21,17 +21,17 @@ class ElementIndex(BaseField):
 
     def unpack_data(self, s):
         self.index_field.unpack(s)
-        return self.elements.field[self.index_field.data]
+        return self.elements[self.index_field.data]
 
     def pack_data(self, s, data):
         try:
             index = self.elements.field.index(data)
         except ValueError:
             data.new_guid()
-            index = len(self.elements.field)
+            index = len(self.elements)
             self.elements.append_data(data.data)
             self.attributes.append_data(data.attribute.data)
-            self.elements.field[index].attribute = self.attributes.field[index]
+            self.elements[index].attribute = self.attributes[index]
         self.index_field.data = index
         self.index_field.pack(s)
 
@@ -83,10 +83,10 @@ class Element(Struct):
         self.F("guid", UUIDField())
 
     def __eq__(self, other):
-        return isinstance(other, Element) and self.field["guid"].data == other.field["guid"].data
+        return isinstance(other, Element) and self["guid"].data == other["guid"].data
 
     def new_guid(self):
-        self.field["guid"].data = uuid4().urn
+        self["guid"].data = uuid4().urn
 
 class PCF(Struct):
     def __init__(self, include_attributes=True):
@@ -96,7 +96,7 @@ class PCF(Struct):
         self.F("magic", Magic("<!-- dmx encoding "))
         self.F("version", FixedString(len("binary 2 format pcf 1")))
         self.F("magic2", Magic(" -->\n\0"))
-        version = self.field["version"].data
+        version = self["version"].data
         assert version in ["binary 2 format pcf 1", "binary 5 format pcf 2"], version
 
         if version == "binary 2 format pcf 1":
@@ -114,18 +114,18 @@ class PCF(Struct):
         self.F("elements", PrefixedArray(Format("I"), lambda: Element(namefield, stringfield)))
         if self.include_attributes:
             self.F("attributes",
-                Array(len(self.field["elements"].field),
+                Array(len(self["elements"]),
                     field_function=lambda i, f: PrefixedArray(
                         Format("I"),
                         lambda: Attribute(
                             namefield,
                             stringfield,
-                            lambda: ElementIndex(self.field["elements"], f, Format("I"))))))
-            for i in xrange(len(self.field["elements"].field)):
-                self.field["elements"].field[i].attribute = self.field["attributes"].field[i]
+                            lambda: ElementIndex(self["elements"], f, Format("I"))))))
+            for i in xrange(len(self["elements"])):
+                self["elements"][i].attribute = self["attributes"][i]
 
     def minimize(self):
-        self.field["strings"].data = []
-        self.field["elements"].data = [self.field["elements"].data[0]]
-        self.field["attributes"].data = [self.field["attributes"].data[0]]
-        self.field["elements"].field[0].attribute = self.field["attributes"].field[0]
+        self["strings"].data = []
+        self["elements"].data = [self["elements"].data[0]]
+        self["attributes"].data = [self["attributes"].data[0]]
+        self["elements"][0].attribute = self["attributes"][0]

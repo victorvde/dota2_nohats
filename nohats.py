@@ -495,10 +495,12 @@ def get_particle_file_systems(d, units, npc_heroes):
         pcf = PCF(include_attributes=False)
         with open(join(dota_dir, file), "rb") as s:
             pcf.unpack(s)
-        for e in pcf.field["elements"].data:
-            if e["type"] == "DmeParticleSystemDefinition":
-                if e["name"] not in particle_file_systems[file]:
-                    particle_file_systems[file].append(e["name"])
+        for e in pcf["elements"]:
+            if e["type"].data == "DmeParticleSystemDefinition":
+                if e["name"].data not in particle_file_systems[file]:
+                    particle_file_systems[file].append(e["name"].data)
+                else:
+                    print >> stderr, u"Warning: double particle system definition '{}' in '{}'".format(e["name"].data, file)
 
     return particle_file_systems
 
@@ -551,17 +553,17 @@ def fix_particles(d, defaults, visuals, units, npc_heroes):
         with open(join(dota_dir, file), "rb") as s:
             p.unpack(s)
         p.minimize()
-        main_element = p.field["elements"].field[0]
-        assert main_element.field["type"].data == "DmElement"
-        assert len(main_element.attribute.field) == 1
-        main_attribute = main_element.attribute.field[0]
-        assert main_attribute.field["name"].data == "particleSystemDefinitions"
-        assert main_attribute.field["type"].data == 15
-        psdl = main_attribute.field["data"].field
+        main_element = p["elements"][0]
+        assert main_element["type"].data == "DmElement"
+        assert len(main_element.attribute) == 1
+        main_attribute = main_element.attribute[0]
+        assert main_attribute["name"].data == "particleSystemDefinitions"
+        assert main_attribute["type"].data == 15
+        psdl = main_attribute["data"]
         for i in xrange(len(psdl)):
             psd = psdl[i].data
-            assert psd.field["type"].data == "DmeParticleSystemDefinition"
-            name = psd.field["name"].data
+            assert psd["type"].data == "DmeParticleSystemDefinition"
+            name = psd["name"].data
             if name in replacements:
                 if replacements[name] is None:
                     psd.attribute.data = []
@@ -570,8 +572,8 @@ def fix_particles(d, defaults, visuals, units, npc_heroes):
                     o = PCF()
                     with open(join(dota_dir, replacement_file), "rb") as s:
                         o.unpack(s)
-                    for e in o.field["elements"].field:
-                        if e.field["type"].data == "DmeParticleSystemDefinition" and e.field["name"].data == replacement_system:
+                    for e in o["elements"]:
+                        if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data == replacement_system:
                             psd.attribute.data = e.attribute.data
                             break
                 del replacements[name]
