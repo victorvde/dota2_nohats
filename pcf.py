@@ -1,29 +1,51 @@
-from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, Array, Index, FixedString
+from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, Array, Index, FixedString, BaseField
 import json
-from uuid import UUID
+from uuid import UUID, uuid4
 
 class UUIDField(Blob):
     def __init__(self):
         Blob.__init__(self, 16)
 
-    def _unpack(self, s):
-        data = Blob._unpack(self, s)
+    def unpack_data(self, s):
+        data = Blob.unpack_data(self, s)
         return UUID(bytes=data).urn
 
-    def _pack(self, s, data):
-        Blob._pack(self, s, UUID(data).bytes)
+    def pack_data(self, s, data):
+        Blob.pack_data(self, s, UUID(data).bytes)
+
+class ElementIndex(BaseField):
+    def __init__(self, elements, attributes, index_field):
+        self.elements = elements
+        self.attributes = attributes
+        self.index_field = index_field
+
+    def unpack_data(self, s):
+        self.index_field.unpack(s)
+        return self.elements.field[self.index_field.data]
+
+    def pack_data(self, s, data):
+        if data not in self.elements.field:
+            data.new_guid()
+            self.elements.data = self.elements.data + [data.data]
+            self.attributes.data = self.attributes.data + [data.attribute.data]
+        self.index_field.data = self.elements.field.index(data)
+        self.index_field.pack(s)
+
+    def serialize(self):
+        return self.index_field.data
 
 class Attribute(Struct):
-    def __init__(self, namefield, stringfield):
+    def __init__(self, namefield, stringfield, elementindexfield):
         self.namefield = namefield
         self.stringfield = stringfield
+        self.elementindexfield = elementindexfield
 
     def fields(self):
         self.F("name", self.namefield())
         type = self.F("type", Format("B")).data
 
         attribute_types = {
-            1 : lambda: Format("I"), # element index
+            1 : self.elementindexfield, # element index
             2 : lambda: Format("I"), # integer
             3 : lambda: Format("f"), # float
             4 : lambda: Format("?"), # bool
@@ -56,6 +78,12 @@ class Element(Struct):
         self.F("name", self.stringfield())
         self.F("guid", UUIDField())
 
+    def __eq__(self, other):
+        return isinstance(other, Element) and self.field["guid"].data == other.field["guid"].data
+
+    def new_guid(self):
+        self.field["guid"].data = uuid4().urn
+
 class PCF(Struct):
     def __init__(self, include_attributes=True):
         self.include_attributes = include_attributes
@@ -81,4 +109,13 @@ class PCF(Struct):
             stringfield = namefield
         self.F("elements", PrefixedArray(Format("I"), lambda: Element(namefield, stringfield)))
         if self.include_attributes:
-            self.F("attributes", Array(len(self.field["elements"].field), lambda: PrefixedArray(Format("I"), lambda: Attribute(namefield, stringfield))))
+            self.F("attributes",
+                Array(len(self.field["elements"].field),
+                    field_function=lambda i, f: PrefixedArray(
+                        Format("I"),
+                        lambda: Attribute(
+                            namefield,
+                            stringfield,
+                            lambda: ElementIndex(self.field["elements"], f, Format("I"))))))
+            for i in xrange(len(self.field["elements"].field)):
+                self.field["elements"].field[i].attribute = self.field["attributes"].field[i]

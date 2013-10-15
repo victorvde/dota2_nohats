@@ -23,26 +23,44 @@ class Seek(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.s.seek(self.old_pos)
 
+class FakeWriteStream(object):
+    def __init__(self, offset):
+        self.offset = offset
+
+    def seek(self, offset):
+        self.offset = offset
+
+    def tell(self):
+        return self.offset
+
+    def write(self, data):
+        self.offset += len(data)
+
 class BaseField(object):
     def unpack(self, s):
-        self._data = self._unpack(s)
+        self.data = self.unpack_data(s)
 
-    def _unpack(self, s):
+    def unpack_data(self, s):
         raise notImplementedError
 
     def pack(self, s):
-        self._pack(s, self._data)
+        self.pack_data(s, self.data)
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         raise NotImplementedError
 
-    @property
-    def data(self):
-        return self._data
+    def full_pack(self, s):
+        new_data = self.data
+        while True:
+            old_data = new_data
+            self.pack(FakeWriteStream(s.tell()))
+            new_data = self.data
+            if old_data == new_data:
+                break
+        self.pack(s)
 
-    @data.setter
-    def data(self, v):
-        self._data = v
+    def serialize(self):
+        return self.data
 
 class Struct(BaseField):
     def add_field(self, name, f):
@@ -84,6 +102,13 @@ class Struct(BaseField):
         self.fields()
         del self.input
 
+    def serialize(self):
+        data = OrderedDict()
+        for k, v in self.field.iteritems():
+            data[k] = v.serialize()
+        return data
+
+
     def fields(self):
         raise NotImplementedError
 
@@ -117,7 +142,7 @@ class Format(BaseField):
         self.fmt = fmt
         self.single = len(fmt) == 1
 
-    def _unpack(self, s):
+    def unpack_data(self, s):
         fmt = self.bosa + self.fmt
         size = calcsize(fmt)
         b = getbytes(s, size)
@@ -127,19 +152,19 @@ class Format(BaseField):
             data = data[0]
         return data
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         if self.single:
             data = (data,)
         s.write(pack(self.fmt, *data))
 
 class BaseArray(BaseField):
-    def __init__(self, field_function=None, indexed_function=None):
-        if indexed_function is None:
-            indexed_function = lambda i: field_function()
-        self.field_fun = indexed_function
+    def __init__(self, field_maker=None, field_function=None):
+        if field_function is None:
+            field_function = lambda i, f: field_maker()
+        self.field_fun = field_function
 
     def unpack(self, s):
-        self.field = [self.field_fun(i) for i in xrange(self.size)]
+        self.field = [self.field_fun(i, self) for i in xrange(self.size)]
         for f in self.field:
             f.unpack(s)
 
@@ -153,9 +178,12 @@ class BaseArray(BaseField):
 
     @data.setter
     def data(self, v):
-        self.field = [self.field_fun(i) for i in xrange(self.size)]
+        self.field = [self.field_fun(i, self) for i in xrange(len(v))]
         for f, fv in zip(self.field, v):
             f.data = fv
+
+    def serialize(self):
+        return [f.serialize() for f in self.field]
 
 class Array(BaseArray):
     def __init__(self, size, *args, **kwargs):
@@ -180,16 +208,11 @@ class PrefixedArray(BaseArray):
         self.prefix_field.pack(s)
         BaseArray.pack(self, s)
 
-    @BaseArray.data.setter
-    def data(self, v):
-        self.prefix_field.data = len(v)
-        BaseArray.data.__set__(self, v)
-
 class BaseBlob(BaseField):
-    def _unpack(self, s):
+    def unpack_data(self, s):
         return getbytes(s, self.size)
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         s.write(data)
 
 class Blob(BaseBlob):
@@ -214,13 +237,8 @@ class PrefixedBlob(BaseBlob):
         self.prefix_field.pack(s)
         BaseBlob.pack(self, s)
 
-    @BaseBlob.data.setter
-    def data(self, v):
-        self.prefix_field.data = len(v)
-        BaseBlob.data.__set__(self, v)
-
 class String(BaseField):
-    def _unpack(self, s):
+    def unpack_data(self, s):
         lc = []
         c = getbyte(s)
         while c != "\0":
@@ -228,7 +246,7 @@ class String(BaseField):
             c = getbyte(s)
         return "".join(lc)
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         s.write(data)
         s.write('\0')
 
@@ -236,12 +254,12 @@ class FixedString(BaseField):
     def __init__(self, size):
         self.size = size
 
-    def _unpack(self, s):
+    def unpack_data(self, s):
         data = getbytes(s, self.size)
         data = data.rstrip("\0")
         return data
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         data = data.ljust(self.size, "\0")
         s.write(data)
 
@@ -250,20 +268,22 @@ class Index(BaseField):
         self.array = array
         self.index_field = index_field
 
-    def _unpack(self, s):
+    def unpack_data(self, s):
         self.index_field.unpack(s)
         return self.array.field[self.index_field.data].data
 
-    def _pack(self, s, data):
-        self.index_field.data = self.array.index(data)
+    def pack_data(self, s, data):
+        if data not in self.array.data:
+            self.array.data = self.array.data + [data]
+        self.index_field.data = self.array.data.index(data)
         self.index_field.pack(s)
 
 class Offset(BaseField):
-    def _unpack(self, s):
+    def unpack_data(self, s):
         return s.tell()
 
-    def _pack(self, s, data):
-        self.packed_at = s.tell()
+    def pack_data(self, s, data):
+        self.data = s.tell()
 
 class Pointer(BaseField):
     def __init__(self, offset, field):

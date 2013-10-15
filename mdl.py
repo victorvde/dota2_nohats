@@ -90,42 +90,43 @@ class BasePointer(Format):
     def __init__(self, fmt):
         Format.__init__(self, fmt)
 
-    def _unpack(self, s):
+    def unpack_data(self, s):
         this = s.tell()
-        data = Format._unpack(self, s)
+        data = Format.unpack_data(self, s)
         assert data == -this
         return data
 
-    def _pack(self, s, data):
+    def pack(self, s):
         this = s.tell()
-        Format._pack(self, s, self.data)
+        self.data = s
+        Format.pack(self, s)
 
 class Relative(Format):
     def __init__(self, field, fmt):
         self.field = field
         Format.__init__(self, fmt)
 
-    def _unpack(self, s):
-        data = Format._unpack(self, s)
+    def unpack_data(self, s):
+        data = Format.unpack_data(self, s)
         if data != 0:
             data += self.field.data
         return data
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         if data != 0:
-            data += self.field.packed_at
-        Format._pack(self, s, data)
+            data += self.field.data
+        Format.pack_data(self, s, data)
 
 class RelativeString(Relative):
-    def _unpack(self, s):
-        data = Relative._unpack(self, s)
+    def unpack_data(self, s):
+        data = Relative.unpack_data(self, s)
         with Seek(s, data):
-            string = String()._unpack(s)
+            string = String().unpack_data(s)
         return [data, string]
 
-    def _pack(self, s, data):
+    def pack_data(self, s, data):
         data = data[0]
-        Relative._pack(self, s, data)
+        Relative.pack_data(self, s, data)
 
 class LocalAnim(Struct):
     def fields(self):
