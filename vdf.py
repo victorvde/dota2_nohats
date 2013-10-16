@@ -89,9 +89,3 @@ def dump(d, s, i=0):
             s.write('\n')
         else:
             assert False, u"Expected KVList or basestring, got {}".format(type(v))
-
-if __name__ == "__main__":
-    with open("items_game.txt", "rb") as input:
-        d = load(input)
-    with open("items_game_dump.txt", "wb") as output:
-        dump(d, output)
