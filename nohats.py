@@ -119,7 +119,8 @@ def copy(src, dest):
     dest_dir = dirname(dest)
     if not exists(dest_dir):
         makedirs(dest_dir)
-    copyfile(src, dest)
+    if not exists(dest):
+        copyfile(src, dest)
 
 def copy_model(src, dest):
     if src == dest:
