@@ -1,3 +1,6 @@
+# Copyright (c) 2013 Victor van den Elzen
+# Released under the Expat license, see LICENSE file for details
+
 from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, Array, Index, FixedString, BaseField
 import json
 from uuid import UUID, uuid4

@@ -1,3 +1,6 @@
+# Copyright (c) 2013 Victor van den Elzen
+# Released under the Expat license, see LICENSE file for details
+
 from struct import pack, unpack, calcsize
 from collections import OrderedDict
 

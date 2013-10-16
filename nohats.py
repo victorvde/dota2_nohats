@@ -1,3 +1,6 @@
+# Copyright (c) 2013 Victor van den Elzen
+# Released under the Expat license, see LICENSE file for details
+
 from vdf import load, dump
 from os.path import abspath, exists, dirname, join
 from sys import argv, stdout, stderr
