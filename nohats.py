@@ -24,10 +24,11 @@ def nohats():
         d = load(input)
     header("Getting defaults")
     defaults = get_defaults(d)
+    default_ids = set(defaults.values())
     header("Fixing simple model files")
-    fix_models(d, defaults)
+    fix_models(d, defaults, default_ids)
     header("Getting visuals")
-    visuals = get_visuals(d)
+    visuals = get_visuals(d, default_ids)
     visuals = filter_visuals(visuals)
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
@@ -54,26 +55,17 @@ def nohats():
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
     header("Fixing particles")
-    visuals = fix_particles(d, defaults, visuals, units, npc_heroes)
+    visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
     header("Fixing skins")
     fix_skins(courier_model, flying_courier_model)
 
-    x, y = filtersplit(visuals, lambda (id, k, v): not k.startswith("asset_modifier"))
-    print x
-    left = set()
-    for e in y:
-        id, k, v = e
-        left.add(v.get("type"))
-    print left
+    assert not visuals
 
 def get_attrib(d, item, key):
     v = item.get(key)
     if v is None and "prefab" in item:
         v = d["items_game"]["prefabs"][item["prefab"]].get(key)
     return v
-
-def is_default(d, item):
-    return get_attrib(d, item, "baseitem") == "1"
 
 def get_hero(d, item):
     if "used_by_heroes" not in item or item["used_by_heroes"] in ["0", "1"]:
@@ -90,18 +82,28 @@ def get_slot(d, item):
 def get_item(d, id):
     return d["items_game"]["items"][id]
 
+def find_item_by_name(d, name):
+    for id, item in d["items_game"]["items"]:
+        if item.get("name") == name:
+            return (id, item)
+    return None
+
 def get_defaults(d):
     defaults = {}
     for id, item in d["items_game"]["items"]:
-        if is_default(d, item):
+        if get_attrib(d, item, "baseitem") == "1":
             hero = get_hero(d, item)
             assert hero is not None
             slot = get_slot(d, item)
             assert slot is not None
             if (hero, slot) in defaults:
-                print u"id {} is a duplicate default for {}".format(id, (hero, slot))
+                print >> stderr, u"Warning: id '{}' is a duplicate default for '{}'".format(id, (hero, slot))
             else:
                 defaults[(hero, slot)] = id
+            if "visuals" in item:
+                if "additional_wearable" in item["visuals"]:
+                    additional_id, _ = find_item_by_name(d, item["visuals"]["additional_wearable"])
+                    defaults[(hero, slot + "_additional_wearable")] = additional_id
     return defaults
 
 def get_default_item(d, defaults, item):
@@ -143,24 +145,32 @@ def copy_model(src, dest):
             with open(join(nohats_dir, dest + ".cloth"), "wb") as s:
                 s.write("ClothSystem\n{\n}\n")
 
-def fix_models(d, defaults):
+def fix_item_model(item, default_item):
+    if default_item is not None:
+        copy_model(default_item["model_player"], item["model_player"])
+    else:
+        copy_model("models/development/invisiblebox.mdl", item["model_player"])
+
+def fix_models(d, defaults, default_ids):
     for id, item in d["items_game"]["items"]:
-        if id == "default" or is_default(d, item):
+        if id == "default" or id in default_ids:
             continue
         if not "model_player" in item:
             continue
         if "model_player" in item:
             default_item = get_default_item(d, defaults, item)
-            if default_item is not None:
-                copy_model(default_item["model_player"], item["model_player"])
-            else:
-                copy_model("models/development/invisiblebox.mdl", item["model_player"])
+            fix_item_model(item, default_item)
+        if "visuals" in item:
+            if "additional_wearable" in item["visuals"]:
+                _, additional_item = find_item_by_name(d, item["visuals"]["additional_wearable"])
+                _, additional_default_item = find_item_by_name(d, default_item["visuals"]["additional_wearable"])
+                fix_item_model(additional_item, additional_default_item)
 
-def get_visuals(d):
+def get_visuals(d, default_ids):
     # get visual modifiers
     visuals = []
     for id, item in d["items_game"]["items"]:
-        if id == "default" or is_default(d, item):
+        if id == "default" or id in default_ids:
             continue
         if "visuals" in item:
             for k, v in item["visuals"]:
@@ -177,6 +187,7 @@ def filter_visuals(visuals):
     visuals = filter(lambda (id, k, v): not k == "alternate_icons", visuals)
     visuals = filter(lambda (id, k, v): not k == "animation_modifiers", visuals)
     visuals = filter(lambda (id, k, v): not k == "skin", visuals)
+    visuals = filter(lambda (id, k, v): not k == "additional_wearable", visuals)
 
     ignore_types = ["announcer", "announcer_preview", "ability_name", "entity_scale", "hud_skin", "speech", "particle_control_point"]
     to_ignore = invisualtypes(ignore_types)
@@ -420,7 +431,7 @@ def get_particlesystems(item):
                     pss.append(v["system"])
     return pss
 
-def get_particle_replacements(d, defaults, visuals):
+def get_particle_replacements(d, defaults, visuals, default_ids):
     particle_replacements = OrderedDict()
     def add_replacement(system, default_system):
         if system in particle_replacements:
@@ -430,13 +441,13 @@ def get_particle_replacements(d, defaults, visuals):
 
     default_particlesystems = set()
     for id, item in d["items_game"]["items"]:
-        if not is_default(d, item):
+        if not id in default_ids:
             continue
         for ps in get_particlesystems(item):
             default_particlesystems.add(ps)
 
     for id, item in d["items_game"]["items"]:
-        if id == "default" or is_default(d, item):
+        if id == "default" or id in default_ids:
             continue
 
         default_item = get_default_item(d, defaults, item)
@@ -523,8 +534,8 @@ def get_particle_file_systems(d, units, npc_heroes):
 
     return particle_file_systems
 
-def fix_particles(d, defaults, visuals, units, npc_heroes):
-    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals)
+def fix_particles(d, defaults, default_ids, visuals, units, npc_heroes):
+    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, default_ids)
 
     particle_file_systems = get_particle_file_systems(d, units, npc_heroes)
 
