@@ -5,7 +5,7 @@ This is the README for the Dota 2 nohats mod.
 Dota 2 nohats is a modification for Valve's Dota 2.
 Installing this mod overrides cosmetic files with default files.
 Effectively it seems like nobody has cosmetics equipped.
-The page for this mod is <http://to-be-determined.invalid>.
+The page for this mod is <https://github.com/victorvde/dota2_nohats>.
 
 ## How do I install this mod?
 Copy the files to the Dota 2 folder (steamapps/common/dota 2 beta/dota).
