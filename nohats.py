@@ -468,7 +468,7 @@ def get_particle_replacements(d, defaults, visuals):
         add_replacement(modifier, asset)
 
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
-        if v["system"].startswith("courier_trail"):
+        if v["system"].startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
             add_replacement(v["system"], None)
 
     forwarded_particle_replacements = OrderedDict()

@@ -1,0 +1,39 @@
+This is the README for the Dota 2 nohats mod.
+
+= What is this?
+
+Dota 2 nohats is a modification for Valve's Dota 2.
+Installing this mod overrides cosmetic files with default files.
+Effectively it seems like nobody has cosmetics equipped.
+The page for this mod is <http://to-be-determined.invalid>.
+
+= How do I install this mod?
+
+Copy the files to the Dota 2 directory (steamapps/common/dota 2 beta/dota).
+Add the "-override_vpk" parameter to the Dota 2 launch options.
+
+= How do I uninstall this mod?
+
+Remove the "-override_vpk" parameter fom the Dota 2 launch options.
+Remove the files from the Dota 2 directory.
+
+= What do I do if I have technical problems with this mod?
+
+Remove the "-override_vpk" parameter fom the Dota 2 launch options.
+Check the bug tracker for your problem.
+If your problem is not on the bug tracker, create a new entry.
+Make sure to include relevant demo files, screenshots, error messages, logs etc.
+
+= How do I create the mod files?
+
+The mod files are created using a Python 2 script and the files from the Dota 2 VPK's.
+The command to create it is:
+  python nohats.py ../dota_unpacked/root nohats > nohats.txt
+This command has been tested with Python 2.7.5 on Windows.
+
+= Footer
+
+Valve and Dota are trademarks and/or registered trademarks of Valve Corporation.
+All other trademarks are the property of their respective owners.
+
+Last updated: 2013-10-16
