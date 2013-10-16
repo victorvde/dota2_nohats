@@ -461,6 +461,10 @@ def get_particle_replacements(d, defaults, visuals):
         item = get_item(d, id)
         add_replacement(modifier, asset)
 
+    for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
+        if v["system"].startswith("courier_trail"):
+            add_replacement(v["system"], None)
+
     forwarded_particle_replacements = OrderedDict()
     for system, default_system in particle_replacements.iteritems():
         while default_system in particle_replacements:
@@ -490,6 +494,10 @@ def get_particle_file_systems(d, units, npc_heroes):
     for id, item in chain(units["DOTAUnits"], npc_heroes["DOTAHeroes"]):
         if "ParticleFile" in item and item["ParticleFile"] not in files:
             files.append(item["ParticleFile"])
+
+    for id, v in d["items_game"]["attribute_controlled_attached_particles"]:
+        if v.get("resource") is not None and v["resource"] not in files:
+            files.append(v["resource"])
 
     particle_file_systems = {}
     for file in files:
