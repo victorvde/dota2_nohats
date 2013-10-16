@@ -42,14 +42,18 @@ def nohats():
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
     header("Fixing couriers")
-    visuals = fix_couriers(visuals, units)
-    visuals = fix_flying_couriers(visuals, units)
+    courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
+    flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
+    visuals = fix_couriers(visuals, units, courier_model)
+    visuals = fix_flying_couriers(visuals, units, flying_courier_model)
     header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
     header("Fixing particles")
     visuals = fix_particles(d, defaults, visuals, units, npc_heroes)
+    header("Fixing skins")
+    fix_skins(courier_model, flying_courier_model)
 
     x, y = filtersplit(visuals, lambda (id, k, v): not k.startswith("asset_modifier"))
     print x
@@ -168,6 +172,7 @@ def filter_visuals(visuals):
     visuals = filter(lambda (id, k, v): not k == "skip_model_combine", visuals)
     visuals = filter(lambda (id, k, v): not k == "alternate_icons", visuals)
     visuals = filter(lambda (id, k, v): not k == "animation_modifiers", visuals)
+    visuals = filter(lambda (id, k, v): not k == "skin", visuals)
 
     ignore_types = ["announcer", "announcer_preview", "ability_name", "entity_scale", "hud_skin", "speech", "particle_control_point"]
     to_ignore = invisualtypes(ignore_types)
@@ -344,17 +349,15 @@ def fix_particle_snapshots(visuals):
 
     return visuals
 
-def fix_couriers(visuals, units):
+def fix_couriers(visuals, units, courier_model):
     courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier"))
-    courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
     for asset, modifier in assetmodifier(courier_visuals):
         assert modifier in ["radiant", "dire"]
         copy_model(courier_model, asset)
     return visuals
 
-def fix_flying_couriers(visuals, units):
+def fix_flying_couriers(visuals, units, flying_courier_model):
     flying_courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier_flying"))
-    flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
     for asset, modifier in assetmodifier(flying_courier_visuals):
         assert modifier in ["radiant", "dire"]
         copy_model(flying_courier_model, asset)
@@ -592,6 +595,30 @@ def fix_particles(d, defaults, visuals, units, npc_heroes):
             p.full_pack(s)
 
     return visuals
+
+def fix_skins(courier_model, flying_courier_model):
+    skins = [
+        courier_model,
+        flying_courier_model,
+        "models/heroes/bounty_hunter/bounty_hunter.mdl",
+        "models/heroes/lina/lina.mdl",
+        "models/heroes/tiny_01/tiny_01.mdl",
+        "models/heroes/tiny_02/tiny_02.mdl",
+        "models/heroes/tiny_03/tiny_03.mdl",
+        "models/heroes/tiny_04/tiny_04.mdl",
+        ]
+    for model in skins:
+        m = MDL()
+        with open(join(dota_dir, model), "rb") as s:
+            m.unpack(s)
+        for i in xrange(1, m["numskinfamilies"].data):
+            m["skin"].field[i].data = m["skin"].field[0].data
+        copy(model, model)
+        if nohats_dir is None:
+            continue
+        with open(join(nohats_dir, model), "r+b") as s:
+            s.seek(m["skinindex"].data)
+            m["skin"].field.pack(s)
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
