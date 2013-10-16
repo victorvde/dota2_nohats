@@ -601,5 +601,5 @@ if __name__ == "__main__":
         nohats_dir = None
     if nohats_dir is not None:
         nohats_dir = abspath(nohats_dir)
-
+        assert not exists(nohats_dir)
     nohats()
