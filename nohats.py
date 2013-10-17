@@ -404,6 +404,7 @@ def fix_animations(d, visuals, npc_heroes):
     for hero in item_activities.keys():
         model = npc_heroes["DOTAHeroes"][hero]["Model"]
         mung_offsets = set()
+        mung_sequence_names = set()
         model_parsed = MDL()
         with open(join(dota_dir, model), "rb") as s:
             model_parsed.unpack(s)
@@ -411,8 +412,11 @@ def fix_animations(d, visuals, npc_heroes):
             for activitymodifier in sequence["activitymodifier"]:
                 if activitymodifier["szindex"][1] in item_activities[hero]:
                     mung_offsets.add(activitymodifier["szindex"][0])
+                    mung_sequence_names.add(sequence["labelindex"][1])
 
         copy(model, model)
+        for mung_sequence_name in sorted(list(mung_sequence_names)):
+            print u"Munging sequence '{}'".format(mung_sequence_name)
         if nohats_dir is None:
             continue
         with open(join(nohats_dir, model), "r+b") as s:
