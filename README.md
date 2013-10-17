@@ -16,6 +16,10 @@ Remove the "-override_vpk" parameter fom the Dota 2 launch options.
 Remove the files from the Dota 2 folder.
 Note: be careful with the "resource" folder.
 
+## Will this mod break if Dota 2 is updated?
+No, generally this mod will continue to function after Dota 2 is updated.
+New cosmetics are not overridden and can be seen though.
+
 ## What do I do if I have technical problems with this mod?
 Remove the "-override_vpk" parameter fom the Dota 2 launch options.
 Check the bug tracker for your problem.
@@ -25,7 +29,7 @@ Make sure to include relevant demo files, screenshots, error messages, logs etc.
 ## Are there known problems with this mod?
 The most up to date list of known problems is on the bug tracker.
 At the time of this release, the known bugs are:
-* Courier portraits can look weird
+* Portraits can look weird, especially on couriers
 
 # Technical
 ## How do I create the mod files?
@@ -71,4 +75,4 @@ These can be found in the folders "particles/{econ,units}".
 Valve and Dota are trademarks and/or registered trademarks of Valve Corporation.
 All other trademarks are the property of their respective owners.
 
-Last updated: 2013-10-16
+Last updated: 2013-10-17
