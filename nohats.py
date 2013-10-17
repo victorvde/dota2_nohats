@@ -45,11 +45,8 @@ def nohats():
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
-    header("Fixing couriers")
     courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
     flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
-    visuals = fix_couriers(visuals, units, courier_model)
-    visuals = fix_flying_couriers(visuals, units, flying_courier_model)
     header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
     header("Fixing animations")
@@ -58,6 +55,9 @@ def nohats():
     visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
     header("Fixing skins")
     fix_skins(courier_model, flying_courier_model)
+    header("Fixing couriers")
+    visuals = fix_couriers(visuals, units, courier_model)
+    visuals = fix_flying_couriers(visuals, units, flying_courier_model)
 
     assert not visuals
 
@@ -119,8 +119,13 @@ def copy(src, dest):
     print u"copy '{}' to '{}'".format(src, dest)
     if nohats_dir is None:
         return
-    src = join(dota_dir, src)
+    if exists(join(nohats_dir, src)):
+        src = join(nohats_dir, src)
+    else:
+        src = join(dota_dir, src)
     dest = join(nohats_dir, dest)
+    if src == dest:
+        return
     dest_dir = dirname(dest)
     if not exists(dest_dir):
         makedirs(dest_dir)
