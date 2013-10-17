@@ -150,9 +150,26 @@ def copy_model(src, dest):
             with open(join(nohats_dir, dest + ".cloth"), "wb") as s:
                 s.write("ClothSystem\n{\n}\n")
 
+def has_alternate_skins(item):
+    if item.get("skin", "0") != "0":
+        return True
+    if "visuals" in item:
+        if item["visuals"].get("skin", "0") != "0":
+            return True
+        for style_id, style in item["visuals"].get("styles", []):
+            if style.get("skin", "0") != "0" and "model_player" not in style:
+                return True
+    return False
+
 def fix_item_model(item, default_item):
     if default_item is not None:
         copy_model(default_item["model_player"], item["model_player"])
+        if has_alternate_skins(item):
+            m = MDL()
+            with open(join(dota_dir, default_item["model_player"]), "rb") as s:
+                m.unpack(s)
+            if m["numskinfamilies"].data != 1:
+                print >> stderr, u"Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"])
     else:
         copy_model("models/development/invisiblebox.mdl", item["model_player"])
 
@@ -218,10 +235,7 @@ def fix_style_models(d, visuals, defaults):
         for styleid, v in visual:
             if not "model_player" in v:
                 continue
-            if default_item is not None:
-                copy_model(default_item["model_player"], v["model_player"])
-            else:
-                copy_model("models/development/invisiblebox.mdl", v["model_player"])
+            fix_item_model(v, default_item)
 
     return visuals
 
