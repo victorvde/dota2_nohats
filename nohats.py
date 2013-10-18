@@ -122,7 +122,7 @@ def copy(src, dest):
     if exists(join(nohats_dir, src)):
         src = join(nohats_dir, src)
     else:
-        src = join(dota_dir, src)
+        src = join(dota_dir, src.lower())
     dest = join(nohats_dir, dest)
     if src == dest:
         return
