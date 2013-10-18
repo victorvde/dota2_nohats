@@ -3,7 +3,8 @@
 
 from binary import Struct, Magic, Format, String, Blob, PrefixedBlob, PrefixedArray, Array, Index, FixedString, BaseField
 import json
-from uuid import UUID, uuid4
+from uuid import UUID
+from random import randint
 
 class UUIDField(Blob):
     def __init__(self):
@@ -89,7 +90,9 @@ class Element(Struct):
         return isinstance(other, Element) and self["guid"].data == other["guid"].data
 
     def new_guid(self):
-        self["guid"].data = uuid4().urn
+        bytes = "".join(chr(randint(0, 255)) for i in xrange(16))
+        uuid = UUID(bytes=bytes, version=4)
+        self["guid"].data = uuid.urn
 
 class PCF(Struct):
     def __init__(self, include_attributes=True):

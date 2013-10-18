@@ -3,9 +3,9 @@
 
 from vdf import load, dump
 from os.path import abspath, exists, dirname, join
-from sys import argv, stdout, stderr
+from sys import argv, stdout, stderr, version
 from shutil import copyfile
-from os import makedirs, listdir
+from os import makedirs, listdir, name as os_name
 from kvlist import KVList
 from mdl import MDL
 from pcf import PCF
@@ -14,6 +14,7 @@ from collections import OrderedDict
 from io import BytesIO
 from itertools import chain
 from binary import FakeWriteStream
+from random import randint, seed
 
 def header(s):
     print u"== {} ==".format(s)
@@ -675,6 +676,14 @@ if __name__ == "__main__":
         nohats_dir = argv[2]
     except IndexError:
         nohats_dir = None
+    try:
+        seed_num = long(argv[3])
+    except IndexError:
+        seed_num = randint(0, 2**128 - 1)
+    print u"OS: {}".format(os_name)
+    print u"Python version: {}".format(version)
+    print u"Seed: {}".format(seed_num)
+    seed(seed_num)
     if nohats_dir is not None:
         nohats_dir = abspath(nohats_dir)
         assert not exists(nohats_dir)
