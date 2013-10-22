@@ -75,4 +75,4 @@ These can be found in the folders "particles/{econ,units}".
 Valve and Dota are trademarks and/or registered trademarks of Valve Corporation.
 All other trademarks are the property of their respective owners.
 
-Last updated: 2013-10-17
+Last updated: 2013-10-21

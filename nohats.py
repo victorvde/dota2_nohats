@@ -353,11 +353,13 @@ def fix_summons(visuals, units):
         asset_model = None
         npc = units["DOTAUnits"].get(asset)
         if npc is None:
-            # spirit bear
-            npc = units["DOTAUnits"].get(asset + "1")
+            for name, unit in units["DOTAUnits"]:
+                if isinstance(unit, KVList) and unit.get("BaseClass") == asset:
+                    npc = unit
+                    break
         if npc is None:
-            # warlock golem
-            npc = units["DOTAUnits"].get(asset + "_1")
+            # lycan wolves
+            npc = units["DOTAUnits"].get(asset + "1")
         if npc is not None:
             asset_model = npc["Model"]
         elif asset == "dota_death_prophet_exorcism_spirit":
