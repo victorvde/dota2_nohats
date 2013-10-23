@@ -1,11 +1,9 @@
-This is the README for the Dota 2 nohats mod.
-
 # General
 ## What is this?
 Dota 2 nohats is a modification for Valve's Dota 2.
 Installing this mod overrides cosmetic files with default files.
 Effectively it seems like nobody has cosmetics equipped.
-The page for this mod is <https://github.com/victorvde/dota2_nohats>.
+The page for this mod is <https://dota2nohats.neocities.org/>.
 
 ## How do I install this mod?
 Copy the files to the Dota 2 folder (steamapps/common/dota 2 beta/dota).
@@ -36,12 +34,12 @@ At the time of this release, the known bugs are:
 
 The mod files are created using a Python 2 script and the files from the Dota 2 VPK's.
 The command to create it is:
-  python nohats.py ../dota_unpacked/root nohats > nohats_log.txt 2> nohats_warnings.txt
-This command has been tested with Python 2.7.5 on Windows.
+  python nohats.py ../dota_unpacked dota2_nohats > nohats_log.txt 2> nohats_warnings.txt
+This command has been tested with Python 2.7.5 on Windows and Arch Linux.
 
 ## Which kinds of cosmetics are overridden where?
 
-Data about cosmetic files is gathered from scripts/items/items_game.txt .
+Data about cosmetic files is gathered from "scripts/items/items_game.txt".
 
 The following are overridden with the default files:
 
@@ -63,16 +61,9 @@ These can be found in the folder "sound".
 
 Custom animations from "activity" visuals are overridden by modifying the hero models.
 Note: taunt animations are not overridden.
-Custom skins from "skin" visuals and "set_parent_skin" fields are overridden by modifying hero and courier MDL files.
+Custom skins from "skin" visuals and "set_parent_skin" fields are overridden by modifying hero and courier model files.
 These can be found in the folders "models/{heroes,props_gameplay}".
 
 Custom particle systems come from "attached_particlesystem" visuals, "particle" visuals and unusual couriers.
-They are overridden by default particle systems and reassembled into PCF files.
+They are overridden by default particle systems and reassembled into particle files.
 These can be found in the folders "particles/{econ,units}".
-
-# Footer
-
-Valve and Dota are trademarks and/or registered trademarks of Valve Corporation.
-All other trademarks are the property of their respective owners.
-
-Last updated: 2013-10-17
