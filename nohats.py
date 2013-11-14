@@ -9,6 +9,7 @@ from os import makedirs, listdir, name as os_name
 from kvlist import KVList
 from mdl import MDL
 from pcf import PCF
+from socket import parse_socket_value
 from wave import open as wave_open
 from collections import OrderedDict
 from io import BytesIO
@@ -28,9 +29,10 @@ def nohats():
     default_ids = set(defaults.values())
     header("Fixing simple model files")
     fix_models(d, defaults, default_ids)
-    header("Getting visuals")
+    header("Getting visuals and sockets")
     visuals = get_visuals(d, default_ids)
     visuals = filter_visuals(visuals)
+    sockets = get_sockets(d)
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
     header("Fixing sounds")
@@ -46,15 +48,15 @@ def nohats():
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
-    courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
-    flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
     header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
     header("Fixing animations")
-    visuals = fix_animations(d, visuals, npc_heroes)
+    visuals = fix_animations(d, visuals, sockets, npc_heroes)
     header("Fixing particles")
-    visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
+    visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
     header("Fixing skins")
+    courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
+    flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
     fix_skins(courier_model, flying_courier_model)
     header("Fixing couriers")
     visuals = fix_couriers(visuals, units, courier_model)
@@ -405,7 +407,15 @@ def get_npc_heroes():
         npc_heroes = load(input)
     return npc_heroes
 
-def fix_animations(d, visuals, npc_heroes):
+def get_sockets(d):
+    sockets = []
+    for id, item in d["items_game"]["items"]:
+        for key, attribute in item.get("attributes", []):
+            if attribute.get("attribute_class") == "socket":
+                sockets.append((id, parse_socket_value(attribute["value"])))
+    return sockets
+
+def fix_animations(d, visuals, sockets, npc_heroes):
     item_activities = {}
     activity_visuals, visuals = filtersplit(visuals, isvisualtype("activity"))
     for id, key, visual in activity_visuals:
@@ -417,7 +427,16 @@ def fix_animations(d, visuals, npc_heroes):
         item_activities.setdefault(hero, set())
         item_activities[hero].add(modifier)
 
-    for hero in item_activities.keys():
+    for id, socket in sockets:
+        if "anim_modifier" not in socket:
+            continue
+        hero = socket["socket"]["required_hero"]
+        anim_modifier = socket["anim_modifier"]
+        modifier = d["items_game"]["anim_modifiers"][anim_modifier]["name"]
+        item_activities.setdefault(hero, set())
+        item_activities[hero].add(modifier)
+
+    for hero in sorted(item_activities.keys()):
         model = npc_heroes["DOTAHeroes"][hero]["Model"]
         mung_offsets = set()
         mung_sequence_names = set()
@@ -456,7 +475,7 @@ def get_particlesystems(item):
                     pss.append(v["system"])
     return pss
 
-def get_particle_replacements(d, defaults, visuals, default_ids):
+def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
     particle_replacements = OrderedDict()
     def add_replacement(system, default_system):
         if system in particle_replacements:
@@ -506,6 +525,12 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
         if v["system"].startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
             add_replacement(v["system"], None)
+
+    for id, socket in sockets:
+        if "effect" in socket:
+            effect_id = socket["effect"]
+            effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"]
+            add_replacement(effect, None)
 
     forwarded_particle_replacements = OrderedDict()
     for system, default_system in particle_replacements.iteritems():
@@ -559,8 +584,8 @@ def get_particle_file_systems(d, units, npc_heroes):
 
     return particle_file_systems
 
-def fix_particles(d, defaults, default_ids, visuals, units, npc_heroes):
-    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, default_ids)
+def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes):
+    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, sockets, default_ids)
 
     particle_file_systems = get_particle_file_systems(d, units, npc_heroes)
 
