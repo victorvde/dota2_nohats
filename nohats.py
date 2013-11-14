@@ -314,7 +314,7 @@ def fix_sounds(visuals):
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
         for modifier_file in modifier_files:
-            copy_wave(join("sound", asset_files[0]), join("sound", modifier_file))
+            copy_wave("sound/" + asset_files[0], "sound/" + modifier_file)
 
     return visuals
 
@@ -328,7 +328,7 @@ def fix_hero_icons(visuals):
         assert modifier.startswith(prefix)
         modifier = modifier[len(prefix):]
         for image_dir in ["resource/flash3/images/heroes", "resource/flash3/images/miniheroes"]:
-            copy(join(image_dir, asset + ".png"), join(image_dir, modifier + ".png"))
+            copy(image_dir + "/" + asset + ".png", image_dir + "/" + modifier + ".png")
 
     return visuals
 
@@ -337,7 +337,7 @@ def fix_ability_icons(visuals):
     ability_icon_visuals, visuals = filtersplit(visuals, isvisualtype("ability_icon_replacement"))
     for asset, modifier in assetmodifier(ability_icon_visuals):
         image_dir = "resource/flash3/images/spellicons"
-        copy(join(image_dir, asset + ".png"), join(image_dir, modifier + ".png"))
+        copy(image_dir + "/" + asset + ".png", image_dir + "/" + modifier + ".png")
 
     return visuals
 
