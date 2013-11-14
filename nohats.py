@@ -266,10 +266,11 @@ def assetmodifier(iterable):
         yield assetmodifier1(visual)
 
 def sound_files(sound):
+    prefix_chars = "*#@<>^)(}$!?"
     if "wave" in sound:
-        return [sound["wave"].lstrip(")")]
+        return [sound["wave"].lstrip(prefix_chars)]
     elif "rndwave" in sound:
-        return [wave.lstrip(")") for wave in sound["rndwave"].values()]
+        return [wave.lstrip(prefix_chars) for wave in sound["rndwave"].values()]
 
 def copy_wave(src, dest):
     print u"copy wave '{}' to '{}'".format(src, dest)
