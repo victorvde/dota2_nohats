@@ -479,7 +479,9 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
     particle_replacements = OrderedDict()
     def add_replacement(system, default_system):
         if system in particle_replacements:
-            assert particle_replacements[system] == default_system
+            old_system = particle_replacements[system]
+            if old_system != default_system:
+                print >> stderr, u"Warning: tried to replace system '{}' with '{}', but already replaced with '{}'".format(system, default_system, old_system)
         else:
             particle_replacements[system] = default_system
 
