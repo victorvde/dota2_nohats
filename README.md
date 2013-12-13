@@ -62,7 +62,7 @@ Custom sounds from "sound" visuals are overridden by the default sound lengthene
 These can be found in the folder "sound".
 
 Custom animations from "activity" visuals are overridden by modifying the hero models.
-Note: taunt animations are not overridden.
+Note: taunt and loadout animations are not overridden.
 Custom skins from "skin" visuals and "set_parent_skin" fields are overridden by modifying hero and courier model files.
 These can be found in the folders "models/{heroes,props_gameplay}".
 
