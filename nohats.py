@@ -492,8 +492,21 @@ def get_particlesystems(item):
     return pss
 
 def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
+    particle_attachments = OrderedDict()
+    for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
+        name = v["system"]
+        attach_type = v["attach_type"]
+        attach_entity = v["attach_entity"]
+        control_points = v.get("control_points")
+        particle_attachments[name] = (attach_type, attach_entity, control_points)
+
     particle_replacements = OrderedDict()
     def add_replacement(system, default_system):
+        attachment = particle_attachments.get(system)
+        default_attachment = particle_attachments.get(default_system)
+        if attachment and default_attachment and attachment != default_attachment:
+            default_system = None
+
         if system in particle_replacements:
             old_system = particle_replacements[system]
             if old_system != default_system:
