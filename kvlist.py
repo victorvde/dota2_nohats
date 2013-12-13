@@ -37,6 +37,9 @@ class KVList(MutableMapping):
     def __len__(self):
         return len(self.list)
 
+    def items(self):
+        return list(self)
+
     def keys(self):
         keys = []
         for k, v in self:
