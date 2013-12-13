@@ -404,16 +404,22 @@ def fix_particle_snapshots(visuals):
     return visuals
 
 def fix_couriers(visuals, units, courier_model):
+    assets = []
     courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier"))
     for asset, modifier in assetmodifier(courier_visuals):
-        assert modifier in ["radiant", "dire"]
+        if asset not in assets:
+            assets.append(asset)
+    for asset in assets:
         copy_model(courier_model, asset)
     return visuals
 
 def fix_flying_couriers(visuals, units, flying_courier_model):
+    assets = []
     flying_courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier_flying"))
     for asset, modifier in assetmodifier(flying_courier_visuals):
-        assert modifier in ["radiant", "dire"]
+        if asset not in assets:
+            assets.append(asset)
+    for asset in assets:
         copy_model(flying_courier_model, asset)
 
     return visuals
