@@ -214,7 +214,16 @@ def filter_visuals(visuals):
     visuals = filter(lambda (id, k, v): not k == "skin", visuals)
     visuals = filter(lambda (id, k, v): not k == "additional_wearable", visuals)
 
-    ignore_types = ["announcer", "announcer_preview", "ability_name", "entity_scale", "hud_skin", "speech", "particle_control_point"]
+    ignore_types = [
+        "announcer",
+        "announcer_preview",
+        "ability_name",
+        "entity_scale",
+        "hud_skin",
+        "speech",
+        "particle_control_point",
+        "loading_screen",
+        ]
     to_ignore = invisualtypes(ignore_types)
     visuals = filter(lambda x: not to_ignore(x), visuals)
 
