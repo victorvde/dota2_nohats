@@ -566,6 +566,9 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
         if v["system"].startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
             add_replacement(v["system"], None)
 
+    for k, v in d["items_game"]["particle_modifiers"]:
+        add_replacement(v["modifier"], v["effect"])
+
     for id, socket in sockets:
         if "effect" in socket:
             effect_id = socket["effect"]
@@ -605,6 +608,10 @@ def get_particle_file_systems(d, units, npc_heroes):
     for id, v in d["items_game"]["attribute_controlled_attached_particles"]:
         if v.get("resource") is not None and v["resource"] not in files:
             files.append(v["resource"])
+
+    for k, v in d["items_game"]["particle_modifiers"]:
+        if v["file"] not in files:
+            files.append(v["file"])
 
     particle_file_systems = {}
     for file in files:
