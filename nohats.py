@@ -471,6 +471,9 @@ def fix_animations(d, visuals, sockets, npc_heroes):
                     mung_offsets.add(activitymodifier["szindex"][0])
                     mung_sequence_names.add(sequence["labelindex"][1])
 
+        if not mung_offsets:
+            continue
+
         copy(model, model)
         for mung_sequence_name in sorted(list(mung_sequence_names)):
             print u"Munging sequence '{}'".format(mung_sequence_name)
