@@ -20,9 +20,15 @@ from random import randint, seed
 def header(s):
     print u"== {} ==".format(s)
 
+def dota_file(p):
+    return join(dota_dir, p.lower())
+
+def nohats_file(p):
+    return join(nohats_dir, p)
+
 def nohats():
     header("Loading items_game.txt")
-    with open(join(dota_dir, "scripts/items/items_game.txt"), "rb") as input:
+    with open(dota_file("scripts/items/items_game.txt"), "rb") as input:
         d = load(input)
     header("Getting defaults")
     defaults = get_defaults(d)
@@ -122,11 +128,11 @@ def copy(src, dest):
     print u"copy '{}' to '{}'".format(src, dest)
     if nohats_dir is None:
         return
-    if exists(join(nohats_dir, src)):
-        src = join(nohats_dir, src)
+    if exists(nohats_file(src)):
+        src = nohats_file(src)
     else:
-        src = join(dota_dir, src.lower())
-    dest = join(nohats_dir, dest)
+        src = dota_file(src)
+    dest = nohats_file(dest)
     if src == dest:
         return
     dest_dir = dirname(dest)
@@ -145,12 +151,12 @@ def copy_model(src, dest):
     copy(src + ".mdl", dest + ".mdl")
     copy(src + ".vvd", dest + ".vvd")
     copy(src + ".dx90.vtx", dest + ".dx90.vtx")
-    if exists(join(dota_dir, src + ".cloth")):
+    if exists(dota_file(src + ".cloth")):
         copy(src + ".cloth", dest + ".cloth")
-    elif exists(join(dota_dir, dest + ".cloth")):
+    elif exists(dota_file(dest + ".cloth")):
         print u"Create empty cloth file '{}'".format(dest + ".cloth")
         if nohats_dir:
-            with open(join(nohats_dir, dest + ".cloth"), "wb") as s:
+            with open(nohats_file(dest + ".cloth"), "wb") as s:
                 s.write("ClothSystem\n{\n}\n")
 
 def has_alternate_skins(item):
@@ -169,7 +175,7 @@ def fix_item_model(item, default_item):
         copy_model(default_item["model_player"], item["model_player"])
         if has_alternate_skins(item):
             m = MDL()
-            with open(join(dota_dir, default_item["model_player"]), "rb") as s:
+            with open(dota_file(default_item["model_player"]), "rb") as s:
                 m.unpack(s)
             if m["numskinfamilies"].data != 1:
                 print >> stderr, u"Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"])
@@ -286,7 +292,7 @@ def sound_files(sound):
 
 def copy_wave(src, dest):
     print u"copy wave '{}' to '{}'".format(src, dest)
-    src = join(dota_dir, src)
+    src = dota_file(src)
     try:
         input = wave_open(src, "rb")
         frames_available = input.getnframes()
@@ -297,7 +303,7 @@ def copy_wave(src, dest):
 
         if nohats_dir is None:
             return
-        dest = join(nohats_dir, dest)
+        dest = nohats_file(dest)
         dest_dir = dirname(dest)
         if not exists(dest_dir):
             makedirs(dest_dir)
@@ -314,7 +320,7 @@ def copy_wave(src, dest):
 def fix_sounds(visuals):
     # get sound list
     sounds = KVList()
-    hero_sound_dir = join(dota_dir, "scripts/game_sounds_heroes")
+    hero_sound_dir = dota_file("scripts/game_sounds_heroes")
     for filename in listdir(hero_sound_dir):
         with open(join(hero_sound_dir, filename)) as s:
             part_sounds = load(s)
@@ -355,7 +361,7 @@ def fix_ability_icons(visuals):
 
 def get_units():
     # get unit model list
-    with open(join(dota_dir, "scripts/npc/npc_units.txt")) as input:
+    with open(dota_file("scripts/npc/npc_units.txt")) as input:
         units = load(input)
     return units
 
@@ -413,7 +419,7 @@ def fix_flying_couriers(visuals, units, flying_courier_model):
     return visuals
 
 def get_npc_heroes():
-    with open(join(dota_dir, "scripts/npc/npc_heroes.txt")) as input:
+    with open(dota_file("scripts/npc/npc_heroes.txt")) as input:
         npc_heroes = load(input)
     return npc_heroes
 
@@ -451,7 +457,7 @@ def fix_animations(d, visuals, sockets, npc_heroes):
         mung_offsets = set()
         mung_sequence_names = set()
         model_parsed = MDL()
-        with open(join(dota_dir, model), "rb") as s:
+        with open(dota_file(model), "rb") as s:
             model_parsed.unpack(s)
         for sequence in model_parsed.data["localsequence"]:
             for activitymodifier in sequence["activitymodifier"]:
@@ -464,7 +470,7 @@ def fix_animations(d, visuals, sockets, npc_heroes):
             print u"Munging sequence '{}'".format(mung_sequence_name)
         if nohats_dir is None:
             continue
-        with open(join(nohats_dir, model), "r+b") as s:
+        with open(nohats_file(model), "r+b") as s:
             for offset in mung_offsets:
                 s.seek(offset)
                 assert s.read(1) not in ["X", ""]
@@ -555,7 +561,7 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
 def get_particle_file_systems(d, units, npc_heroes):
     files = []
 
-    with open(join(dota_dir, "particles/particles_manifest.txt"), "rb") as s:
+    with open(dota_file("particles/particles_manifest.txt"), "rb") as s:
         l = s.readline().rstrip("\r\n")
         l = "\"" + l + "\""
         l += s.read()
@@ -580,12 +586,12 @@ def get_particle_file_systems(d, units, npc_heroes):
 
     particle_file_systems = {}
     for file in files:
-        if not exists(join(dota_dir, file)):
+        if not exists(dota_file(file)):
             print >> stderr, u"Warning: referenced particle file '{}' doesn't exist.".format(file)
             continue
         particle_file_systems[file] = []
         pcf = PCF(include_attributes=False)
-        with open(join(dota_dir, file), "rb") as s:
+        with open(dota_file(file), "rb") as s:
             pcf.unpack(s)
         for e in pcf["elements"]:
             if e["type"].data == "DmeParticleSystemDefinition":
@@ -642,7 +648,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 print u"\t{} -> {} ({})".format(system, replacement_system, replacement_file)
 
         p = PCF()
-        with open(join(dota_dir, file), "rb") as s:
+        with open(dota_file(file), "rb") as s:
             p.unpack(s)
         p.minimize()
         main_element = p["elements"][0]
@@ -662,7 +668,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 else:
                     replacement_file, replacement_system = replacements[name]
                     o = PCF()
-                    with open(join(dota_dir, replacement_file), "rb") as s:
+                    with open(dota_file(replacement_file), "rb") as s:
                         o.unpack(s)
                     for e in o["elements"]:
                         if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data == replacement_system:
@@ -672,7 +678,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
         assert not replacements
 
         if nohats_dir:
-            dest = join(nohats_dir, file)
+            dest = nohats_file(file)
             dest_dir = dirname(dest)
             if not exists(dest_dir):
                 makedirs(dest_dir)
@@ -698,7 +704,7 @@ def fix_skins(courier_model, flying_courier_model):
         ]
     for model in skins:
         m = MDL()
-        with open(join(dota_dir, model), "rb") as s:
+        with open(dota_file(model), "rb") as s:
             m.unpack(s)
         assert m["numskinfamilies"] != 1, (model, m["numskinfamilies"])
         for i in xrange(1, m["numskinfamilies"].data):
@@ -706,7 +712,7 @@ def fix_skins(courier_model, flying_courier_model):
         copy(model, model)
         if nohats_dir is None:
             continue
-        with open(join(nohats_dir, model), "r+b") as s:
+        with open(nohats_file(model), "r+b") as s:
             s.seek(m["skinindex"].data)
             m["skin"].field.pack(s)
 
