@@ -57,7 +57,7 @@ def nohats():
     header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
     header("Fixing animations")
-    visuals = fix_animations(d, visuals, sockets, npc_heroes)
+    visuals = fix_animations(d, visuals, npc_heroes)
     header("Fixing particles")
     visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
     header("Fixing skins")
@@ -437,37 +437,37 @@ def get_sockets(d):
                 sockets.append((id, parse_socket_value(attribute["value"])))
     return sockets
 
-def fix_animations(d, visuals, sockets, npc_heroes):
-    item_activities = {}
+def fix_animations(d, visuals, npc_heroes):
+    ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT"]
+
+    item_activities = set()
+
     activity_visuals, visuals = filtersplit(visuals, isvisualtype("activity"))
     for id, key, visual in activity_visuals:
         asset, modifier = assetmodifier1(visual)
-        if asset == "ACT_DOTA_TAUNT":
-            continue
-        item = get_item(d, id)
-        hero = get_hero(d, item)
-        item_activities.setdefault(hero, set())
-        item_activities[hero].add(modifier)
+        item_activities.add(modifier)
 
-    for id, socket in sockets:
-        if "anim_modifier" not in socket:
-            continue
-        hero = socket["socket"]["required_hero"]
-        anim_modifier = socket["anim_modifier"]
-        modifier = d["items_game"]["anim_modifiers"][anim_modifier]["name"]
-        item_activities.setdefault(hero, set())
-        item_activities[hero].add(modifier)
+    for id, gem in d["items_game"]["anim_modifiers"]:
+        modifier = gem["name"]
+        item_activities.add(modifier)
 
-    for hero in sorted(item_activities.keys()):
-        model = npc_heroes["DOTAHeroes"][hero]["Model"]
+    for k, v in npc_heroes["DOTAHeroes"]:
+        if k == "Version":
+            continue
+        model = v["Model"]
+        if not exists(dota_file(model)):
+            continue
+
         mung_offsets = set()
         mung_sequence_names = set()
         model_parsed = MDL()
         with open(dota_file(model), "rb") as s:
             model_parsed.unpack(s)
         for sequence in model_parsed.data["localsequence"]:
+            if sequence["activitynameindex"][1] in ignored:
+                continue
             for activitymodifier in sequence["activitymodifier"]:
-                if activitymodifier["szindex"][1] in item_activities[hero]:
+                if activitymodifier["szindex"][1] in item_activities:
                     mung_offsets.add(activitymodifier["szindex"][0])
                     mung_sequence_names.add(sequence["labelindex"][1])
 
