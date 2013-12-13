@@ -223,6 +223,7 @@ def filter_visuals(visuals):
         "speech",
         "particle_control_point",
         "loading_screen",
+        "response_criteria",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = filter(lambda x: not to_ignore(x), visuals)
