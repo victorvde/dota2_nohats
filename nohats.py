@@ -690,6 +690,7 @@ def fix_skins(courier_model, flying_courier_model):
         flying_courier_model,
         "models/heroes/bounty_hunter/bounty_hunter.mdl",
         "models/heroes/lina/lina.mdl",
+        "models/heroes/legion_commander/legion_commander.mdl",
         "models/heroes/tiny_01/tiny_01.mdl",
         "models/heroes/tiny_02/tiny_02.mdl",
         "models/heroes/tiny_03/tiny_03.mdl",
