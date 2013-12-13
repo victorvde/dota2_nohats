@@ -62,7 +62,7 @@ def nohats():
     visuals = fix_couriers(visuals, units, courier_model)
     visuals = fix_flying_couriers(visuals, units, flying_courier_model)
 
-    assert not visuals
+    assert not visuals, visuals
 
 def get_attrib(d, item, key):
     v = item.get(key)
@@ -699,6 +699,7 @@ def fix_skins(courier_model, flying_courier_model):
         m = MDL()
         with open(join(dota_dir, model), "rb") as s:
             m.unpack(s)
+        assert m["numskinfamilies"] != 1, (model, m["numskinfamilies"])
         for i in xrange(1, m["numskinfamilies"].data):
             m["skin"].field[i].data = m["skin"].field[0].data
         copy(model, model)
