@@ -47,7 +47,7 @@ The following are overridden with the default files:
 
 * Cosmetic models from "model_player" fields
 * Cosmetic summon models from "entity_model" visuals
-* Costemit alternate hero models from "hero_model_change" visuals
+* Cosmetic alternate hero models from "hero_model_change" visuals
 * Cosmetic courier models from "courier" and "courier_flying" visuals
 * Custom icons from "icon_replacement" and "ability_icon_replacement" visuals
 * Custom particle snapshots from "particle_snapshot" visuals
