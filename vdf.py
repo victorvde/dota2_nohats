@@ -35,20 +35,20 @@ def load(s):
             k, v = parse_item(s, [])
             items[k] = v
         else:
-            assert False, u"Unexpected character '{}'".format(c)
+            assert False, "Unexpected character '{}'".format(c)
     return items
 
 def parse_dict(s, context):
     d = KVList()
     while True:
         c = skip_space(s)
-        if c == '}':
+        if c == "}":
             break
         elif c == '"':
             k, v = parse_item(s, context)
             d[k] = v
         else:
-            assert False, u"Expected '\"' or '}', got '{}' in {}".format(c, context)
+            assert False, "Expected '\"' or '}}', got '{}' in {}".format(c, context)
     return d
 
 def parse_item(s, context):
@@ -56,15 +56,15 @@ def parse_item(s, context):
     c = skip_space(s)
     if c == '"':
         v = getstring(s)
-    elif c == '{':
+    elif c == "{":
         v = parse_dict(s, context+[k])
     else:
-        assert False, u"Expected a string or a dict, got '{}' in {}".format(c, repr(context))
+        assert False, "Expected a string or a dict, got '{}' in {}".format(c, repr(context))
     return k, v
 
 def indent(i, s):
-    for j in xrange(i):
-        s.write('\t')
+    for j in range(i):
+        s.write("\t")
 
 def dump(d, s, i=0):
     for k, v in d:
@@ -73,19 +73,19 @@ def dump(d, s, i=0):
         s.write(k)
         s.write('"')
         if isinstance(v, KVList):
-            s.write('\n')
+            s.write("\n")
             indent(i, s)
-            s.write('{')
-            s.write('\n')
+            s.write("{")
+            s.write("\n")
             dump(v, s, i+1)
             indent(i, s)
-            s.write('}')
-            s.write('\n')
-        elif isinstance(v, basestring):
-            s.write('\t\t')
+            s.write("}")
+            s.write("\n")
+        elif isinstance(v, str):
+            s.write("\t\t")
             s.write('"')
             s.write(v)
             s.write('"')
-            s.write('\n')
+            s.write("\n")
         else:
-            assert False, u"Expected KVList or basestring, got {}".format(type(v))
+            assert False, "Expected KVList or string, got {}".format(type(v))

@@ -72,4 +72,4 @@ if __name__ == "__main__":
     with open(argv[1], "rb") as s:
         d.unpack(s)
     import json
-    print json.dumps(d.data, indent=4)
+    print(json.dumps(d.data, indent=4))

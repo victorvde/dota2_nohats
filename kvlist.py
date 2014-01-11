@@ -10,7 +10,7 @@ class KVList(MutableMapping):
 
     def last_index(self, key):
         l = len(self.list)
-        for i in xrange(l):
+        for i in range(l):
             if self.list[l-i-1][0] == key:
                 return l-i-1
         return None

@@ -12,13 +12,13 @@ from pcf import PCF
 from socket import parse_socket_value
 from wave import open as wave_open
 from collections import OrderedDict
-from io import BytesIO
+from io import StringIO
 from itertools import chain
 from binary import FakeWriteStream
 from random import randint, seed
 
 def header(s):
-    print u"== {} ==".format(s)
+    print("== {} ==".format(s))
 
 def dota_file(p):
     return join(dota_dir, p.lower())
@@ -28,7 +28,7 @@ def nohats_file(p):
 
 def nohats():
     header("Loading items_game.txt")
-    with open(dota_file("scripts/items/items_game.txt"), "rb") as input:
+    with open(dota_file("scripts/items/items_game.txt"), "rt") as input:
         d = load(input)
     header("Getting defaults")
     defaults = get_defaults(d)
@@ -79,7 +79,7 @@ def get_attrib(d, item, key):
 def get_hero(d, item):
     if "used_by_heroes" not in item or item["used_by_heroes"] in ["0", "1"]:
         return None
-    heroes = item["used_by_heroes"].keys()
+    heroes = list(item["used_by_heroes"].keys())
     assert len(heroes) == 1
     hero = heroes[0]
     assert item["used_by_heroes"][hero] == "1"
@@ -106,7 +106,7 @@ def get_defaults(d):
             slot = get_slot(d, item)
             assert slot is not None
             if (hero, slot) in defaults:
-                print >> stderr, u"Warning: id '{}' is a duplicate default for '{}'".format(id, (hero, slot))
+                print("Warning: id '{}' is a duplicate default for '{}'".format(id, (hero, slot)), file=stderr)
             else:
                 defaults[(hero, slot)] = id
             if "visuals" in item:
@@ -125,7 +125,7 @@ def get_default_item(d, defaults, item):
     return default_item
 
 def copy(src, dest):
-    print u"copy '{}' to '{}'".format(src, dest)
+    print("copy '{}' to '{}'".format(src, dest))
     if nohats_dir is None:
         return
     if exists(nohats_file(src)):
@@ -154,10 +154,10 @@ def copy_model(src, dest):
     if exists(dota_file(src + ".cloth")):
         copy(src + ".cloth", dest + ".cloth")
     elif exists(dota_file(dest + ".cloth")):
-        print u"Create empty cloth file '{}'".format(dest + ".cloth")
+        print("Create empty cloth file '{}'".format(dest + ".cloth"))
         if nohats_dir:
             with open(nohats_file(dest + ".cloth"), "wb") as s:
-                s.write("ClothSystem\n{\n}\n")
+                s.write(b"ClothSystem\r\n{\r\n}\r\n")
 
 def has_alternate_skins(item):
     if item.get("skin", "0") != "0":
@@ -178,7 +178,7 @@ def fix_item_model(item, default_item):
             with open(dota_file(default_item["model_player"]), "rb") as s:
                 m.unpack(s)
             if m["numskinfamilies"].data != 1:
-                print >> stderr, u"Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"])
+                print("Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"]), file=stderr)
     else:
         copy_model("models/development/invisiblebox.mdl", item["model_player"])
 
@@ -211,14 +211,14 @@ def get_visuals(d, default_ids):
 
 def filter_visuals(visuals):
     # particle systems are handled seperately as a group per item
-    visuals = filter(lambda (id, k, v): not k.startswith("attached_particlesystem"), visuals)
+    visuals = [id_k_v for id_k_v in visuals if not id_k_v[1].startswith("attached_particlesystem")]
 
     # random stuff
-    visuals = filter(lambda (id, k, v): not k == "skip_model_combine", visuals)
-    visuals = filter(lambda (id, k, v): not k == "alternate_icons", visuals)
-    visuals = filter(lambda (id, k, v): not k == "animation_modifiers", visuals)
-    visuals = filter(lambda (id, k, v): not k == "skin", visuals)
-    visuals = filter(lambda (id, k, v): not k == "additional_wearable", visuals)
+    visuals = [id_k_v1 for id_k_v1 in visuals if not id_k_v1[1] == "skip_model_combine"]
+    visuals = [id_k_v2 for id_k_v2 in visuals if not id_k_v2[1] == "alternate_icons"]
+    visuals = [id_k_v3 for id_k_v3 in visuals if not id_k_v3[1] == "animation_modifiers"]
+    visuals = [id_k_v4 for id_k_v4 in visuals if not id_k_v4[1] == "skin"]
+    visuals = [id_k_v5 for id_k_v5 in visuals if not id_k_v5[1] == "additional_wearable"]
 
     ignore_types = [
         "announcer",
@@ -232,7 +232,7 @@ def filter_visuals(visuals):
         "response_criteria",
         ]
     to_ignore = invisualtypes(ignore_types)
-    visuals = filter(lambda x: not to_ignore(x), visuals)
+    visuals = [x for x in visuals if not to_ignore(x)]
 
     return visuals
 
@@ -247,7 +247,7 @@ def filtersplit(l, f):
     return (a, b)
 
 def fix_style_models(d, visuals, defaults):
-    styles_visuals, visuals = filtersplit(visuals, lambda (id, k, v): k == "styles")
+    styles_visuals, visuals = filtersplit(visuals, lambda id_k_v6: id_k_v6[1] == "styles")
     for id, _, visual in styles_visuals:
         item = get_item(d, id)
         default_item = get_default_item(d, defaults, item)
@@ -276,7 +276,7 @@ def assetmodifier1(visual):
         assert frequency == "1"
     if "style" in visual:
         style = visual.pop("style")
-    assert len(visual) == 0, visual.keys()
+    assert len(visual) == 0, list(visual.keys())
     return (asset, modifier)
 
 def assetmodifier(iterable):
@@ -291,14 +291,14 @@ def sound_files(sound):
         return [wave.lstrip(prefix_chars) for wave in sound["rndwave"].values()]
 
 def copy_wave(src, dest):
-    print u"copy wave '{}' to '{}'".format(src, dest)
+    print("copy wave '{}' to '{}'".format(src, dest))
     src = dota_file(src)
     try:
         input = wave_open(src, "rb")
         frames_available = input.getnframes()
         # fill to two seconds because of noise
         frames_needed = 2 * input.getframerate()
-        empty_frame = "\0" * input.getsampwidth() * input.getnchannels()
+        empty_frame = b"\0" * input.getsampwidth() * input.getnchannels()
         filler_frames = empty_frame * max(frames_needed - frames_available, 0)
 
         if nohats_dir is None:
@@ -322,7 +322,7 @@ def fix_sounds(visuals):
     sounds = KVList()
     hero_sound_dir = dota_file("scripts/game_sounds_heroes")
     for filename in listdir(hero_sound_dir):
-        with open(join(hero_sound_dir, filename)) as s:
+        with open(join(hero_sound_dir, filename), "rt") as s:
             part_sounds = load(s)
         sounds.update(list(part_sounds))
 
@@ -361,7 +361,7 @@ def fix_ability_icons(visuals):
 
 def get_units():
     # get unit model list
-    with open(dota_file("scripts/npc/npc_units.txt")) as input:
+    with open(dota_file("scripts/npc/npc_units.txt"), "rt") as input:
         units = load(input)
     return units
 
@@ -425,7 +425,7 @@ def fix_flying_couriers(visuals, units, flying_courier_model):
     return visuals
 
 def get_npc_heroes():
-    with open(dota_file("scripts/npc/npc_heroes.txt")) as input:
+    with open(dota_file("scripts/npc/npc_heroes.txt"), "rt") as input:
         npc_heroes = load(input)
     return npc_heroes
 
@@ -476,15 +476,15 @@ def fix_animations(d, visuals, npc_heroes):
 
         copy(model, model)
         for mung_sequence_name in sorted(list(mung_sequence_names)):
-            print u"Munging sequence '{}'".format(mung_sequence_name)
+            print("Munging sequence '{}'".format(mung_sequence_name))
         if nohats_dir is None:
             continue
         with open(nohats_file(model), "r+b") as s:
             for offset in mung_offsets:
                 s.seek(offset)
-                assert s.read(1) not in ["X", ""]
+                assert s.read(1) not in [b"X", b""]
                 s.seek(offset)
-                s.write("X")
+                s.write(b"X")
 
     return visuals
 
@@ -519,7 +519,7 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
         if system in particle_replacements:
             old_system = particle_replacements[system]
             if old_system != default_system:
-                print >> stderr, u"Warning: tried to replace system '{}' with '{}', but already replaced with '{}'".format(system, default_system, old_system)
+                print("Warning: tried to replace system '{}' with '{}', but already replaced with '{}'".format(system, default_system, old_system), file=stderr)
         else:
             particle_replacements[system] = default_system
 
@@ -538,7 +538,7 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
         pss = get_particlesystems(item)
         default_pss = get_particlesystems(default_item)
         if default_pss and pss and len(pss) < len(default_pss):
-            print >> stderr, u"Warning: couldn't put default particle systems '{}' in '{}' ({})".format(default_pss, pss, id)
+            print("Warning: couldn't put default particle systems '{}' in '{}' ({})".format(default_pss, pss, id), file=stderr)
 
         for default_ps in list(default_pss):
             if default_ps in pss:
@@ -548,7 +548,7 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
         while pss:
             ps = pss.pop(0)
             if ps in default_particlesystems:
-                print >> stderr, u"Warning: tried to override default particle system '{}' ({})".format(ps, id)
+                print("Warning: tried to override default particle system '{}' ({})".format(ps, id), file=stderr)
                 continue
             if default_pss:
                 default_ps = default_pss.pop(0)
@@ -576,7 +576,7 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
             add_replacement(effect, None)
 
     forwarded_particle_replacements = OrderedDict()
-    for system, default_system in particle_replacements.iteritems():
+    for system, default_system in particle_replacements.items():
         while default_system in particle_replacements:
             default_system = particle_replacements[default_system]
         forwarded_particle_replacements[system] = default_system
@@ -586,11 +586,11 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
 def get_particle_file_systems(d, units, npc_heroes):
     files = []
 
-    with open(dota_file("particles/particles_manifest.txt"), "rb") as s:
-        l = s.readline().rstrip("\r\n")
+    with open(dota_file("particles/particles_manifest.txt"), "rt") as s:
+        l = s.readline().rstrip("\n")
         l = "\"" + l + "\""
         l += s.read()
-    m = load(BytesIO(l))
+    m = load(StringIO(l))
     for k, v in m["particles_manifest"]:
         assert k == "file", k
         if v.startswith("!"):
@@ -616,7 +616,7 @@ def get_particle_file_systems(d, units, npc_heroes):
     particle_file_systems = {}
     for file in files:
         if not exists(dota_file(file)):
-            print >> stderr, u"Warning: referenced particle file '{}' doesn't exist.".format(file)
+            print("Warning: referenced particle file '{}' doesn't exist.".format(file), file=stderr)
             continue
         particle_file_systems[file] = []
         pcf = PCF(include_attributes=False)
@@ -627,7 +627,7 @@ def get_particle_file_systems(d, units, npc_heroes):
                 if e["name"].data not in particle_file_systems[file]:
                     particle_file_systems[file].append(e["name"].data)
                 else:
-                    print >> stderr, u"Warning: double particle system definition '{}' in '{}'".format(e["name"].data, file)
+                    print("Warning: double particle system definition '{}' in '{}'".format(e["name"].data, file), file=stderr)
 
     return particle_file_systems
 
@@ -637,15 +637,15 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
     particle_file_systems = get_particle_file_systems(d, units, npc_heroes)
 
     particlesystem_files = {}
-    for file, systems in particle_file_systems.iteritems():
+    for file, systems in particle_file_systems.items():
         for system in systems:
             particlesystem_files.setdefault(system, [])
             particlesystem_files[system].append(file)
 
     file_replacements = OrderedDict()
-    for system, default_system in particle_replacements.iteritems():
+    for system, default_system in particle_replacements.items():
         if system not in particlesystem_files:
-            print >> stderr, u"Warning: system '{}' is not in any particle file".format(system)
+            print("Warning: system '{}' is not in any particle file".format(system), file=stderr)
             continue
         system_files = particlesystem_files[system]
         if default_system is None:
@@ -657,7 +657,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                     # pseudo-system for item triggered particle effects
                     pass
                 else:
-                    print >> stderr, u"Warning: default system '{}' is not in any particle file".format(default_system)
+                    print("Warning: default system '{}' is not in any particle file".format(default_system), file=stderr)
 
         for file in system_files:
             file_replacements.setdefault(file, OrderedDict())
@@ -667,14 +667,14 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 # TODO: figure out the right choice when len(default_system_files) > 1
                 file_replacements[file][system] = (default_system_files[0], default_system)
 
-    for file, replacements in file_replacements.iteritems():
-        print u"{}:".format(file)
-        for system, replacement in replacements.iteritems():
+    for file, replacements in file_replacements.items():
+        print("{}:".format(file))
+        for system, replacement in replacements.items():
             if replacement is None:
-                print u"\t{} -> None".format(system)
+                print("\t{} -> None".format(system))
             else:
                 replacement_file, replacement_system = replacement
-                print u"\t{} -> {} ({})".format(system, replacement_system, replacement_file)
+                print("\t{} -> {} ({})".format(system, replacement_system, replacement_file))
 
         p = PCF()
         with open(dota_file(file), "rb") as s:
@@ -687,7 +687,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
         assert main_attribute["name"].data == "particleSystemDefinitions"
         assert main_attribute["type"].data == 15
         psdl = main_attribute["data"]
-        for i in xrange(len(psdl)):
+        for i in range(len(psdl)):
             psd = psdl[i].data
             assert psd["type"].data == "DmeParticleSystemDefinition"
             name = psd["name"].data
@@ -736,7 +736,7 @@ def fix_skins(courier_model, flying_courier_model):
         with open(dota_file(model), "rb") as s:
             m.unpack(s)
         assert m["numskinfamilies"] != 1, (model, m["numskinfamilies"])
-        for i in xrange(1, m["numskinfamilies"].data):
+        for i in range(1, m["numskinfamilies"].data):
             m["skin"].field[i].data = m["skin"].field[0].data
         copy(model, model)
         if nohats_dir is None:
@@ -752,12 +752,12 @@ if __name__ == "__main__":
     except IndexError:
         nohats_dir = None
     try:
-        seed_num = long(argv[3])
+        seed_num = int(argv[3])
     except IndexError:
         seed_num = randint(0, 2**128 - 1)
-    print u"OS: {}".format(os_name)
-    print u"Python version: {}".format(version)
-    print u"Seed: {}".format(seed_num)
+    print("OS: {}".format(os_name))
+    print("Python version: {}".format(version))
+    print("Seed: {}".format(seed_num))
     seed(seed_num)
     if nohats_dir is not None:
         nohats_dir = abspath(nohats_dir)

@@ -90,8 +90,8 @@ class Element(Struct):
         return isinstance(other, Element) and self["guid"].data == other["guid"].data
 
     def new_guid(self):
-        bytes = "".join(chr(randint(0, 255)) for i in xrange(16))
-        uuid = UUID(bytes=bytes, version=4)
+        random_bytes = bytes([randint(0, 255) for i in range(16)])
+        uuid = UUID(bytes=random_bytes, version=4)
         self["guid"].data = uuid.urn
 
 class PCF(Struct):
@@ -127,7 +127,7 @@ class PCF(Struct):
                             namefield,
                             stringfield,
                             lambda: ElementIndex(self["elements"], f, Format("I"))))))
-            for i in xrange(len(self["elements"])):
+            for i in range(len(self["elements"])):
                 self["elements"][i].attribute = self["attributes"][i]
 
     def minimize(self):

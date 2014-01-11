@@ -108,13 +108,13 @@ class Struct(ContainerField):
         del self.input
 
     def pack(self, s):
-        for name, f in self.field.iteritems():
+        for name, f in self.field.items():
             f.pack(s)
 
     @property
     def data(self):
         data = OrderedDict()
-        for k, v in self.field.iteritems():
+        for k, v in self.field.items():
             data[k] = v.data
         return data
 
@@ -127,7 +127,7 @@ class Struct(ContainerField):
 
     def serialize(self):
         data = OrderedDict()
-        for k, v in self.field.iteritems():
+        for k, v in self.field.items():
             data[k] = v.serialize()
         return data
 
@@ -136,6 +136,8 @@ class Struct(ContainerField):
 
 class Magic(BaseField):
     def __init__(self, magic):
+        if isinstance(magic, str):
+            magic = magic.encode()
         self.magic = magic
 
     def unpack(self, s):
@@ -186,7 +188,7 @@ class BaseArray(ContainerField):
         self.field_fun = field_function
 
     def unpack(self, s):
-        self.field = [self.field_fun(i, self) for i in xrange(self.size)]
+        self.field = [self.field_fun(i, self) for i in range(self.size)]
         for f in self:
             f.unpack(s)
 
@@ -200,7 +202,7 @@ class BaseArray(ContainerField):
 
     @data.setter
     def data(self, v):
-        self.field = [self.field_fun(i, self) for i in xrange(len(v))]
+        self.field = [self.field_fun(i, self) for i in range(len(v))]
         for f, fv in zip(self.field, v):
             f.data = fv
 
@@ -268,14 +270,14 @@ class String(BaseField):
     def unpack_data(self, s):
         lc = []
         c = getbyte(s)
-        while c != "\0":
+        while c != b"\0":
             lc.append(c)
             c = getbyte(s)
-        return "".join(lc)
+        return b"".join(lc).decode()
 
     def pack_data(self, s, data):
-        s.write(data)
-        s.write('\0')
+        s.write(data.encode())
+        s.write(b"\0")
 
 class FixedString(BaseField):
     def __init__(self, size):
@@ -283,11 +285,11 @@ class FixedString(BaseField):
 
     def unpack_data(self, s):
         data = getbytes(s, self.size)
-        data = data.rstrip("\0")
+        data = data.rstrip(b"\0").decode()
         return data
 
     def pack_data(self, s, data):
-        data = data.ljust(self.size, "\0")
+        data = data.encode().ljust(self.size, b"\0")
         s.write(data)
 
 class Index(BaseField):
