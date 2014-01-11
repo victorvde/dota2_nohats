@@ -43,21 +43,16 @@ class ElementIndex(BaseField):
         return self.index_field.data
 
 class Attribute(Struct):
-    def __init__(self, namefield, stringfield, elementindexfield):
-        self.namefield = namefield
-        self.stringfield = stringfield
-        self.elementindexfield = elementindexfield
-
-    def fields(self):
-        self.F("name", self.namefield())
+    def fields(self, namefield, stringfield, elementindexfield):
+        self.F("name", namefield())
         type = self.F("type", Format("B")).data
 
         attribute_types = {
-            1 : self.elementindexfield, # element index
+            1 : elementindexfield, # element index
             2 : lambda: Format("I"), # integer
             3 : lambda: Format("f"), # float
             4 : lambda: Format("?"), # bool
-            5 : self.stringfield, # string
+            5 : stringfield, # string
             6 : lambda: PrefixedBlob(Format("I")), # blob
             7 : lambda: Format("I"), # time
             8 : lambda: Format("4B"), # color
@@ -77,13 +72,9 @@ class Attribute(Struct):
             assert False, type
 
 class Element(Struct):
-    def __init__(self, namefield, stringfield):
-        self.namefield = namefield
-        self.stringfield = stringfield
-
-    def fields(self):
-        self.F("type", self.namefield())
-        self.F("name", self.stringfield())
+    def fields(self, namefield, stringfield):
+        self.F("type", namefield())
+        self.F("name", stringfield())
         self.F("guid", UUIDField())
 
     def __eq__(self, other):
@@ -95,10 +86,7 @@ class Element(Struct):
         self["guid"].data = uuid.urn
 
 class PCF(Struct):
-    def __init__(self, include_attributes=True):
-        self.include_attributes = include_attributes
-
-    def fields(self):
+    def fields(self, include_attributes=True):
         self.F("magic", Magic("<!-- dmx encoding "))
         self.F("version", FixedString(len("binary 2 format pcf 1")))
         self.F("magic2", Magic(" -->\n\0"))
@@ -118,7 +106,7 @@ class PCF(Struct):
             namefield = lambda: Index(strings, Format("I"))
             stringfield = namefield
         self.F("elements", PrefixedArray(Format("I"), lambda: Element(namefield, stringfield)))
-        if self.include_attributes:
+        if include_attributes:
             self.F("attributes",
                 Array(len(self["elements"]),
                     field_function=lambda i, f: PrefixedArray(

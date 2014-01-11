@@ -86,6 +86,10 @@ class ContainerField(BaseField):
         return key in self.field
 
 class Struct(ContainerField):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
     def add_field(self, name, f):
         assert name not in self, name
         self[name] = f
@@ -104,7 +108,7 @@ class Struct(ContainerField):
     def unpack(self, s):
         self.field = OrderedDict()
         self.input = ("stream", s)
-        self.fields()
+        self.fields(*self.args, **self.kwargs)
         del self.input
 
     def pack(self, s):
@@ -122,7 +126,7 @@ class Struct(ContainerField):
     def data(self, v):
         self.field = OrderedDict()
         self.input = ("data", v)
-        self.fields()
+        self.fields(*self.args, **self.kwargs)
         del self.input
 
     def serialize(self):

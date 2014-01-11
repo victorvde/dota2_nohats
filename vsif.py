@@ -21,10 +21,6 @@ class LZMAField(BaseField):
         return unpacked
 
 class Scene(Struct):
-    def __init__(self, strings, length):
-        self.strings = strings
-        self.length = length
-
     def fields(self):
         self.F("method", Magic("LZMA"))
         self.F("uncompressed_size", Format("I"))
@@ -33,26 +29,20 @@ class Scene(Struct):
         self.F("scene_data", LZMAField(self["uncompressed_size"].data, self["compressed_size"].data))
 
 class SceneSummary(Struct):
-    def __init__(self, strings):
-        self.strings = strings
-
-    def fields(self):
+    def fields(self, strings):
         self.F("milliseconds", Format("I"))
         self.F("milliseconds_2", Format("I"))
-        self.F("sounds", PrefixedArray(Format("I"), lambda: Index(self.strings, Format("I"))))
+        self.F("sounds", PrefixedArray(Format("I"), lambda: Index(strings, Format("I"))))
 
 class SceneEntry(Struct):
-    def __init__(self, strings):
-        self.strings = strings
-
-    def fields(self):
+    def fields(self, strings):
         self.F("namecrc", Format("I"))
         self.F("offset", Format("I"))
         self.F("length", Format("I"))
         # self.F("scenesummary", Format("I"))
-        self.F("scenesummary", DataPointer(Format("I"), SceneSummary(self.strings)))
+        self.F("scenesummary", DataPointer(Format("I"), SceneSummary(strings)))
 
-        self.F("scene", Pointer(self["offset"].data, Scene(self.strings, self["length"].data)))
+        self.F("scene", Pointer(self["offset"].data, Scene()))
 
 class VSIF(Struct):
     def fields(self):
