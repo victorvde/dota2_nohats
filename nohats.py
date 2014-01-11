@@ -211,14 +211,17 @@ def get_visuals(d, default_ids):
 
 def filter_visuals(visuals):
     # particle systems are handled seperately as a group per item
-    visuals = [id_k_v for id_k_v in visuals if not id_k_v[1].startswith("attached_particlesystem")]
+    visuals = [(id, k, v) for (id, k, v) in visuals if not k.startswith("attached_particlesystem")]
 
     # random stuff
-    visuals = [id_k_v1 for id_k_v1 in visuals if not id_k_v1[1] == "skip_model_combine"]
-    visuals = [id_k_v2 for id_k_v2 in visuals if not id_k_v2[1] == "alternate_icons"]
-    visuals = [id_k_v3 for id_k_v3 in visuals if not id_k_v3[1] == "animation_modifiers"]
-    visuals = [id_k_v4 for id_k_v4 in visuals if not id_k_v4[1] == "skin"]
-    visuals = [id_k_v5 for id_k_v5 in visuals if not id_k_v5[1] == "additional_wearable"]
+    ignore_keys = [
+        "skip_model_combine",
+        "alternate_icons",
+        "animation_modifiers",
+        "skin",
+        "additional_wearable",
+    ]
+    visuals = [(id, k, v) for (id, k, v) in visuals if k not in ignore_keys]
 
     ignore_types = [
         "announcer",
@@ -247,7 +250,7 @@ def filtersplit(l, f):
     return (a, b)
 
 def fix_style_models(d, visuals, defaults):
-    styles_visuals, visuals = filtersplit(visuals, lambda id_k_v6: id_k_v6[1] == "styles")
+    styles_visuals, visuals = filtersplit(visuals, lambda id_k_v: id_k_v[1] == "styles")
     for id, _, visual in styles_visuals:
         item = get_item(d, id)
         default_item = get_default_item(d, defaults, item)
