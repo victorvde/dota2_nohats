@@ -331,3 +331,21 @@ class Pointer(BaseField):
     @data.setter
     def data(self, v):
         self.field.data = v
+
+class DataPointer(BaseField):
+    def __init__(self, offset_field, data_field):
+        self.offset_field = offset_field
+        self.data_field = data_field
+
+    def unpack(self, s):
+        self.offset_field.unpack(s)
+        with Seek(s, self.offset_field.data):
+            self.data_field.unpack(s)
+
+    @property
+    def data(self):
+        return self.data_field.data
+
+    @data.setter
+    def data(self, v):
+        self.data_field.data = v
