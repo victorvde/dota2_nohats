@@ -3,10 +3,7 @@
 
 from binary import Struct, Magic, Format, Array, String, Pointer, DataPointer, Index, PrefixedArray, BaseField, getbytes
 from struct import pack
-try:
-    from lzma import decompress, FORMAT_ALONE
-except ImportError:
-    from backports.lzma import decompress, FORMAT_ALONE
+from lzma import decompress, FORMAT_ALONE
 
 class LZMAField(BaseField):
     def __init__(self, uncompressed_size, compressed_size):
@@ -58,7 +55,7 @@ class VSIF(Struct):
     def fields(self):
         self.F("magic", Magic("VSIF"))
         self.F("version", Format("I"))
-        assert self["version"].data == 3
+        assert self["version"].data == 3, "Expected version 3, got {}".format(self["version"].data)
         self.F("nscenes", Format("I"))
         self.F("nstrings", Format("I"))
         self.F("scenesoffset", Format("I"))
@@ -67,9 +64,62 @@ class VSIF(Struct):
         self.F("scenes", Pointer(self["scenesoffset"].data, Array(self["nscenes"].data, lambda: SceneEntry(self["strings"]))))
 
 if __name__ == "__main__":
-    from sys import argv
+    from sys import argv, stderr
+    from zlib import crc32
+    from os import makedirs
+    from os.path import dirname
+    from re import match
+    from itertools import chain
+
     d = VSIF()
     with open(argv[1], "rb") as s:
         d.unpack(s)
-    import json
-    print(json.dumps(d.data, indent=4))
+
+    names = set()
+    with open(argv[2], "rt") as s:
+        for line in s:
+            name = line.rstrip()
+            names.add(name)
+
+    generated_names = set()
+    dirs = set()
+    for name in names:
+        m = match(r"scenes/([a-z0-9_]+)/", name)
+        if m:
+            dirs.add(m.group(1))
+    for scene in d["scenes"]:
+        sounds = scene["scenesummary"]["sounds"].data
+        for sound in sounds:
+            for dir in dirs:
+                if sound.startswith(dir):
+                    generated_name = "scenes/{}/{}.vcd".format(dir, sound)
+                    generated_names.add(generated_name)
+
+    crcs = {}
+    for name in chain(names, generated_names):
+        crc = crc32(name.replace('/', '\\').encode())
+        if crc in crcs:
+            if crcs[crc] != name:
+                print("CRC {:x} for both '{}' and '{}'".format(crc, crcs[crc], name), file=stderr)
+        else:
+            crcs[crc] = name
+
+    found = 0
+    not_found = 0
+    for scene in d["scenes"]:
+        crc = scene["namecrc"].data
+        if crc in crcs:
+            found += 1
+            name = crcs[crc]
+        else:
+            not_found += 1
+            # print("Can't find CRC {:x} with sounds {}".format(crc, scene["scenesummary"]["sounds"].data))
+            name = "scenes/unknown-{:x}.vcd".format(crc)
+
+        dir = dirname(name)
+        if dir:
+            makedirs(dir, exist_ok=True)
+        with open(name, "wb") as s:
+            s.write(scene["scene"]["scene_data"].data)
+
+    print("Found {} scene names, couldn't find {} scene names".format(found, not_found))

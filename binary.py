@@ -317,7 +317,7 @@ class Offset(BaseField):
     def pack_data(self, s, data):
         self.data = s.tell()
 
-class Pointer(BaseField):
+class Pointer(ContainerField):
     def __init__(self, offset, field):
         self.offset = offset
         self.field = field
@@ -334,20 +334,20 @@ class Pointer(BaseField):
     def data(self, v):
         self.field.data = v
 
-class DataPointer(BaseField):
-    def __init__(self, offset_field, data_field):
+class DataPointer(ContainerField):
+    def __init__(self, offset_field, field):
         self.offset_field = offset_field
-        self.data_field = data_field
+        self.field = field
 
     def unpack(self, s):
         self.offset_field.unpack(s)
         with Seek(s, self.offset_field.data):
-            self.data_field.unpack(s)
+            self.field.unpack(s)
 
     @property
     def data(self):
-        return self.data_field.data
+        return self.field.data
 
     @data.setter
     def data(self, v):
-        self.data_field.data = v
+        self.field.data = v
