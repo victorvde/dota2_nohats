@@ -351,3 +351,25 @@ class DataPointer(ContainerField):
     @data.setter
     def data(self, v):
         self.field.data = v
+
+class Mapping(BaseField):
+    def __init__(self, field, mapping):
+        self.field = field
+        self.mapping = mapping
+
+    def unpack_data(self, s):
+        data = self.field.unpack_data(s)
+        return mapping[data]
+
+class Flags(BaseField):
+    def __init__(self, field, flags):
+        self.field = field
+        self.flags = flags
+
+    def unpack_data(self, s):
+        data = self.field.unpack_data(s)
+        flag_data = set()
+        for mask, name in self.flags:
+            if mask & data:
+                flag_data.add(name)
+        return flag_data
