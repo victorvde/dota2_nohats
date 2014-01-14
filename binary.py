@@ -153,7 +153,7 @@ class Magic(BaseField):
 
     @property
     def data(self):
-        return self.magic
+        return self.magic.decode()
 
     @data.setter
     def data(self, v):
@@ -363,7 +363,7 @@ class Mapping(BaseField):
 
     def unpack_data(self, s):
         data = self.field.unpack_data(s)
-        return mapping[data]
+        return self.mapping[data]
 
 class Flags(BaseField):
     def __init__(self, field, flags):
@@ -372,8 +372,8 @@ class Flags(BaseField):
 
     def unpack_data(self, s):
         data = self.field.unpack_data(s)
-        flag_data = set()
+        flag_data = []
         for mask, name in self.flags:
             if mask & data:
-                flag_data.add(name)
+                flag_data.append(name)
         return flag_data

@@ -5,14 +5,14 @@ from binary import Struct, Magic, Format, Array, String, Pointer, DataPointer, I
 from struct import pack
 from lzma import decompress, FORMAT_ALONE
 
+from io import BytesIO
 from itertools import chain
+from json import dump
 from os import makedirs
 from os.path import dirname
 from re import match
 from sys import argv, stderr
 from zlib import crc32
-
-from pprint import pprint
 
 class LZMAField(BaseField):
     def __init__(self, uncompressed_size, compressed_size):
@@ -69,17 +69,17 @@ class ScaledField(BaseField):
 
     def unpack_data(self, s):
         data = self.field.unpack_data(s)
-        return data / scale
+        return data / self.scale
 
 class BVCDTag(Struct):
     def fields(self, strings, paramfield):
-        self.F("name", Index(strings, Format("H")))
+        self.F("name", Index(strings, Format("I")))
         self.F("param", paramfield)
 
 class BVCDRamp(Struct):
     def fields(self):
-        self.F("p", Format("f"))
-        self.F("t", ScaledField(Format("f"), 255.))
+        self.F("t", Format("f"))
+        self.F("v", ScaledField(Format("B"), 255.))
 
 class BVCDFlexSample(Struct):
     curve_types = [
@@ -103,7 +103,7 @@ class BVCDFlexSample(Struct):
 
     def fields(self):
         self.F("p", Format("f"))
-        self.F("t", ScaledField(Format("f"), 255.))
+        self.F("t", ScaledField(Format("B"), 255.))
         self.F("from_type", Mapping(Format("B"), self.curve_types))
         self.F("to_type", Mapping(Format("B"), self.curve_types))
 
@@ -114,7 +114,7 @@ class BVCDFlexTrack(Struct):
     ]
 
     def fields(self, strings):
-        self.F("name", Index(strings, Format("H")))
+        self.F("name", Index(strings, Format("I")))
         self.F("flags", Flags(Format("B"), self.flag_types))
         self.F("range", Format("ff"))
         self.F("samples", PrefixedArray(Format("H"), BVCDFlexSample))
@@ -159,10 +159,10 @@ class BVCDEvent(Struct):
 
     def fields(self, strings):
         self.F("type", Mapping(Format("B"), self.event_types))
-        self.F("name", Index(strings, Format("H")))
+        self.F("name", Index(strings, Format("I")))
         self.F("time", Format("ff"))
-        self.F("params", Array(3, lambda: Index(strings, Format("H"))))
-        self.F("ramp", PrefixedArray(Format("B", BVCDRamp)))
+        self.F("params", Array(3, lambda: Index(strings, Format("I"))))
+        self.F("ramp", PrefixedArray(Format("B"), BVCDRamp))
         self.F("flags", Flags(Format("B"), self.flag_types))
         self.F("distancetotarget", Format("f"))
         self.F("tags", PrefixedArray(Format("B"), lambda: BVCDTag(strings, ScaledField(Format("B"), 255.))))
@@ -171,7 +171,7 @@ class BVCDEvent(Struct):
         self.F("playback_time", PrefixedArray(Format("B"), lambda: BVCDTag(strings, ScaledField(Format("H"), 4096.))))
         if self["type"].data == "gesture":
             self.F("sequenceduration", Format("f"))
-        self.F("relativetag", PrefixedArray(Format("B"), lambda: BVCDTag(strings, Index(strings, Format("H")))))
+        self.F("relativetag", PrefixedArray(Format("B"), lambda: BVCDTag(strings, Index(strings, Format("I")))))
 
         self.F("flex", PrefixedArray(Format("B"), lambda: BVCDFlexTrack(strings)))
 
@@ -180,18 +180,34 @@ class BVCDEvent(Struct):
 
         if self["type"].data == "speak":
             self.F("cctype", Format("B"))
-            self.F("cctoken", Index(strings, Format("H")))
+            self.F("cctoken", Index(strings, Format("I")))
             self.F("ccflags", Flags(Format("B"), self.cc_flag_types))
 
+class BVCDChannel(Struct):
+    def fields(self, strings):
+        self.F("name", Index(strings, Format("I")))
+        self.F("events", PrefixedArray(Format("B"), lambda: BVCDEvent(strings)))
+        self.F("disabled", Format("B"))
+
+class BVCDActors(Struct):
+    def fields(self, strings):
+        self.F("name", Index(strings, Format("I")))
+        self.F("channels", PrefixedArray(Format("B"), lambda: BVCDChannel(strings)))
+        self.F("disabled", Format("B"))
+
 class BVCD(Struct):
-    def fields(self):
+    def fields(self, strings):
         self.F("magic", Magic("bvcd"))
         self.F("version", Format("B"))
         assert self["version"].data == 4, "Expected version 4, got {}".format(self["version"].data)
-        self.F("unknown", Format("I"))
+        self.F("crc", Format("I"))
 
-        self.F("events", PrefixedArray(Format("B"), BVCDEvent))
-        # self.F("actors", PrefixedArray(Format("B"), BVCDActors))
+        self.F("events", PrefixedArray(Format("B"), lambda: BVCDEvent(strings)))
+        self.F("actors", PrefixedArray(Format("B"), lambda: BVCDActors(strings)))
+
+        self.F("ramp", PrefixedArray(Format("B"), BVCDRamp))
+
+        self.F("ignorephonemes", Format("B"))
 
 def create_crc_mapping(d, scene_list):
     names = set()
@@ -244,21 +260,20 @@ def unpack(vsif, scene_list):
             # print("Can't find CRC {:x} with sounds {}".format(crc, scene["scenesummary"]["sounds"].data))
             name = "scenes/unknown-{:08x}.vcd".format(crc)
 
+        b = BVCD(d["strings"])
+        with BytesIO(scene["scene"]["scene_data"].data) as s:
+            b.unpack(s)
+            assert s.read(1) == b"", name
+
+        name = name.replace(".vcd", ".json")
+
         dir = dirname(name)
         if dir:
             makedirs(dir, exist_ok=True)
-        with open(name, "wb") as s:
-            s.write(scene["scene"]["scene_data"].data)
+        with open(name, "w") as s:
+            dump(b.data, s, indent=4)
 
     print("Found {} scene names, couldn't find {} scene names".format(found, not_found))
 
 if __name__ == "__main__":
-    # unpack(argv[1], argv[2])
-    v = VSIF()
-    with open(argv[1], "rb") as s:
-        v.unpack(s)
-
-    d = BVCD(v["strings"])
-    with open(argv[2], "rb") as s:
-        d.unpack(s)
-    pprint(d.data)
+    unpack(argv[1], argv[2])
