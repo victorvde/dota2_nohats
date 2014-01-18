@@ -32,12 +32,12 @@ At the time of this release, the known bugs are:
 # Technical
 ## How do I create the mod files?
 
-The mod files are created using a Python 2 script and the files from the Dota 2 VPK's.
+The mod files are created using a Python 3 script and the files from the Dota 2 VPK's.
 The command to create it is:
 
-    python nohats.py ../dota_unpacked dota2_nohats > nohats_log.txt 2> nohats_warnings.txt
+    python3 nohats.py ../dota_unpacked dota2_nohats > nohats_log.txt 2> nohats_warnings.txt
 
-This command has been tested with Python 2.7.5 on Windows and Arch Linux.
+This command has been tested with Python 3.3.3 on Linux.
 
 ## Which kinds of cosmetics are overridden where?
 
