@@ -190,6 +190,7 @@ class BaseArray(ContainerField):
         if field_function is None:
             field_function = lambda i, f: field_maker()
         self.field_fun = field_function
+        self._dict = None
 
     def unpack(self, s):
         self.field = [self.field_fun(i, self) for i in range(self.size)]
@@ -204,19 +205,30 @@ class BaseArray(ContainerField):
     def data(self):
         return [f.data for f in self]
 
+    def index(self, field):
+        if self._dict is None:
+            self._dict = {}
+            for i in range(len(self.field)):
+                self._dict[self.field[i]] = i
+        return self._dict[field]
+
     @data.setter
     def data(self, v):
         self.field = [self.field_fun(i, self) for i in range(len(v))]
         for f, fv in zip(self.field, v):
             f.data = fv
+        self._dict = None
 
     def serialize(self):
         return [f.serialize() for f in self]
 
     def append_data(self, v):
-        f = self.field_fun(len(self.field), self)
+        idx = len(self.field)
+        f = self.field_fun(idx, self)
         self.field.append(f)
         f.data = v
+        if self._dict is not None:
+            self._dict[f] = idx
 
 class Array(BaseArray):
     def __init__(self, size, *args, **kwargs):

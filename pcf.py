@@ -29,8 +29,8 @@ class ElementIndex(BaseField):
 
     def pack_data(self, s, data):
         try:
-            index = self.elements.field.index(data)
-        except ValueError:
+            index = self.elements.index(data)
+        except KeyError:
             data.new_guid()
             index = len(self.elements)
             self.elements.append_data(data.data)
@@ -77,8 +77,14 @@ class Element(Struct):
         self.F("name", stringfield())
         self.F("guid", UUIDField())
 
+    def __key(self):
+        return self["guid"].data
+
     def __eq__(self, other):
-        return isinstance(other, Element) and self["guid"].data == other["guid"].data
+        return isinstance(other, Element) and self.__key() == other.__key()
+
+    def __hash__(self):
+        return hash(self.__key())
 
     def new_guid(self):
         random_bytes = bytes([randint(0, 255) for i in range(16)])
