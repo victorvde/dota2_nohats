@@ -21,7 +21,7 @@ def header(s):
     print("== {} ==".format(s))
 
 def dota_file(p):
-    return join(dota_dir, p.lower())
+    return join(dota_dir, p.lower().replace("\\", "/"))
 
 def nohats_file(p):
     return join(nohats_dir, p)
