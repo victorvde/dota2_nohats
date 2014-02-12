@@ -5,7 +5,7 @@ from vdf import load, dump
 from os.path import abspath, exists, dirname, join
 from sys import argv, stdout, stderr, version
 from shutil import copyfile
-from os import makedirs, listdir, name as os_name
+from os import makedirs, listdir, walk, name as os_name
 from kvlist import KVList
 from mdl import MDL
 from pcf import PCF
@@ -293,11 +293,20 @@ def sound_files(sound):
     elif "rndwave" in sound:
         return [wave.lstrip(prefix_chars) for wave in sound["rndwave"].values()]
 
+def copy_sound(src, dest):
+    if src.endswith(".wav") and dest.endswith(".wav"):
+        copy_wave(src, dest)
+    elif src.endswith(".mp3") and dest.endswith(".mp3"):
+        copy(src, dest)
+    else:
+        print("Unknown sound extension copy for '{}' to '{}'".format(src, dest), file=stderr)
+        #assert False, "Unknown sound extension copy for '{}' to '{}'".format(src, dest)
+
 def copy_wave(src, dest):
     print("copy wave '{}' to '{}'".format(src, dest))
     src = dota_file(src)
+    input = wave_open(src, "rb")
     try:
-        input = wave_open(src, "rb")
         frames_available = input.getnframes()
         # fill to two seconds because of noise
         frames_needed = 2 * input.getframerate()
@@ -311,8 +320,8 @@ def copy_wave(src, dest):
         if not exists(dest_dir):
             makedirs(dest_dir)
 
+        output = wave_open(dest, "wb")
         try:
-            output = wave_open(dest, "wb")
             output.setparams(input.getparams())
             output.writeframes(input.readframes(frames_available) + filler_frames)
         finally:
@@ -323,19 +332,27 @@ def copy_wave(src, dest):
 def fix_sounds(visuals):
     # get sound list
     sounds = KVList()
-    hero_sound_dir = dota_file("scripts/game_sounds_heroes")
-    for filename in listdir(hero_sound_dir):
-        with open(join(hero_sound_dir, filename), "rt") as s:
-            part_sounds = load(s)
-        sounds.update(list(part_sounds))
+    for root, _, files in walk(dota_file("scripts")):
+        for f in files:
+            if not (f.startswith("game_sounds_") and f.endswith(".txt")):
+                continue
+            if f.endswith("_phonemes.txt"):
+                continue
+            if f.endswith("_manifest.txt"):
+                continue
+            with open(join(root, f), "rt") as s:
+                part_sounds = load(s)
+            sounds.update(list(part_sounds))
 
     # fix sound visuals
     sound_visuals, visuals = filtersplit(visuals, isvisualtype("sound"))
     for asset, modifier in assetmodifier(sound_visuals):
+        if asset == "DOTAMusic_Hero.Death":
+            asset = "DOTAMusic.StateHeroDeath"
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
         for modifier_file in modifier_files:
-            copy_wave("sound/" + asset_files[0], "sound/" + modifier_file)
+            copy_sound("sound/" + asset_files[0], "sound/" + modifier_file)
 
     return visuals
 
