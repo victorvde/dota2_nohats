@@ -16,6 +16,7 @@ from io import StringIO
 from itertools import chain
 from binary import FakeWriteStream
 from random import randint, seed
+from re import match
 
 def header(s):
     print("== {} ==".format(s))
@@ -63,6 +64,8 @@ def nohats():
     visuals = fix_base_models(visuals, npc_heroes)
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
+    header("Fixing unit speech")
+    visuals = fix_unit_speech(visuals)
     header("Fixing skins")
     courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
     flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
@@ -237,7 +240,6 @@ def filter_visuals(visuals):
         "speech",
         "particle_control_point",
         "loading_screen",
-        "response_criteria",
         "custom_kill_effect",
         ]
     to_ignore = invisualtypes(ignore_types)
@@ -279,7 +281,7 @@ def isvisualtype(type):
 def assetmodifier1(visual):
     type = visual.pop("type")
     asset = visual.pop("asset")
-    modifier = visual.pop("modifier")
+    modifier = visual.pop("modifier", None)
     if "frequency" in visual:
         frequency = visual.pop("frequency")
         assert frequency == "1"
@@ -520,6 +522,38 @@ def fix_animations(d, visuals, npc_heroes):
                 assert s.read(1) not in [b"X", b""]
                 s.seek(offset)
                 s.write(b"X")
+
+    return visuals
+
+def fix_unit_speech(visuals):
+    # fix alternate hero speech (lc/tb arcana)
+    response_visuals, visuals = filtersplit(visuals, isvisualtype("response_criteria"))
+    custom_responses = []
+    for asset, modifier in assetmodifier(response_visuals):
+        custom_responses.append(asset)
+
+    talkers = "scripts/talker"
+    dota_talkers = dota_file(talkers)
+    for talker in listdir(dota_talkers):
+        edited = False
+        lines = []
+        with open(join(dota_talkers, talker), "rt") as f:
+            for line in f:
+                m = match('criterion "([^"]+)" "customresponse" "([^"]+)" weight 5 required\n$', line)
+                if m:
+                    edited = True
+                    assert m.group(2) in custom_responses
+                    lines.append('criterion "{}" "customresponse" "INVALID" weight 5 required\n'.format(m.group(1)))
+                else:
+                    lines.append(line)
+        if edited and nohats_dir:
+            print("Fixing {}".format(talker))
+            nohats_talkers = nohats_file(talkers)
+            if not exists(nohats_talkers):
+                makedirs(nohats_talkers)
+            with open(join(nohats_talkers, talker), "wt", newline="\r\n") as s:
+                for line in lines:
+                    s.write(line)
 
     return visuals
 
