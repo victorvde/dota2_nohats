@@ -238,6 +238,7 @@ def filter_visuals(visuals):
         "particle_control_point",
         "loading_screen",
         "response_criteria",
+        "custom_kill_effect",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
