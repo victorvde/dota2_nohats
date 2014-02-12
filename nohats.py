@@ -59,6 +59,8 @@ def nohats():
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
+    header("Fixing alternate base models")
+    visuals = fix_base_models(visuals, npc_heroes)
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
     header("Fixing skins")
@@ -406,6 +408,15 @@ def fix_summons(visuals, units):
             # wth?
             asset_model = "models/heroes/death_prophet/death_prophet_ghost.mdl"
         assert asset_model is not None, asset
+        copy_model(asset_model, modifier)
+
+    return visuals
+
+def fix_base_models(visuals, heroes):
+    # fix hero base model overrides (TB arcana)
+    entity_model_visuals, visuals = filtersplit(visuals, isvisualtype("base_model"))
+    for asset, modifier in assetmodifier(entity_model_visuals):
+        asset_model = heroes["DOTAHeroes"][asset]["Model"]
         copy_model(asset_model, modifier)
 
     return visuals
