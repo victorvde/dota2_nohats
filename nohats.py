@@ -30,15 +30,22 @@ def nohats():
     header("Loading items_game.txt")
     with open(dota_file("scripts/items/items_game.txt"), "rt") as input:
         d = load(input)
+
     header("Getting defaults")
     defaults = get_defaults(d)
     default_ids = set(defaults.values())
-    header("Fixing simple model files")
-    fix_models(d, defaults, default_ids)
-    header("Getting visuals and sockets")
+    header("Getting visuals")
     visuals = get_visuals(d, default_ids)
     visuals = filter_visuals(visuals)
+    header("Getting sockets")
     sockets = get_sockets(d)
+    header("Loading npc_units.txt")
+    units = get_units()
+    header("Loading npc_heroes.txt")
+    npc_heroes = get_npc_heroes()
+
+    header("Fixing simple model files")
+    fix_models(d, defaults, default_ids)
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
     header("Fixing sounds")
@@ -46,20 +53,14 @@ def nohats():
     header("Fixing icons")
     visuals = fix_hero_icons(visuals)
     visuals = fix_ability_icons(visuals)
-    header("Loading npc_units.txt")
-    units = get_units()
     header("Fixing summons")
     visuals = fix_summons(visuals, units)
     header("Fixing alternate hero models")
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
-    header("Loading npc_heroes.txt")
-    npc_heroes = get_npc_heroes()
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
-    header("Fixing particles")
-    visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
     header("Fixing skins")
     courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
     flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
@@ -67,6 +68,8 @@ def nohats():
     header("Fixing couriers")
     visuals = fix_couriers(visuals, units, courier_model)
     visuals = fix_flying_couriers(visuals, units, flying_courier_model)
+    header("Fixing particles")
+    visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
 
     assert not visuals, visuals
 
