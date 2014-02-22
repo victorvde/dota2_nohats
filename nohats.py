@@ -77,6 +77,8 @@ def nohats():
     header("Fixing couriers")
     visuals = fix_couriers(visuals, units, courier_model)
     visuals = fix_flying_couriers(visuals, units, flying_courier_model)
+    header("Fixing Terrorblade color")
+    fix_terrorblade_color(npc_heroes)
     header("Fixing particles")
     visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
 
@@ -670,6 +672,32 @@ def get_particle_file_systems(d, units, npc_heroes):
 
     return particle_file_systems
 
+def edit_particle_file(f, file):
+    p = PCF()
+    with open(source_file(file), "rb") as s:
+        p.unpack(s)
+    p.minimize()
+    main_element = p["elements"][0]
+    assert main_element["type"].data == "DmElement"
+    assert len(main_element.attribute) == 1
+    main_attribute = main_element.attribute[0]
+    assert main_attribute["name"].data == "particleSystemDefinitions"
+    assert main_attribute["type"].data == 15
+    psdl = main_attribute["data"]
+    for i in range(len(psdl)):
+        f(psdl, i)
+
+    if nohats_dir:
+        dest = nohats_file(file)
+        dest_dir = dirname(dest)
+        if not exists(dest_dir):
+            makedirs(dest_dir)
+        with open(dest, "wb") as s:
+            p.full_pack(s)
+    else:
+        s = FakeWriteStream(0, file)
+        p.full_pack(s)
+
 def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes):
     visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, sockets, default_ids)
 
@@ -715,18 +743,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 replacement_file, replacement_system = replacement
                 print("\t{} -> {} ({})".format(system, replacement_system, replacement_file))
 
-        p = PCF()
-        with open(source_file(file), "rb") as s:
-            p.unpack(s)
-        p.minimize()
-        main_element = p["elements"][0]
-        assert main_element["type"].data == "DmElement"
-        assert len(main_element.attribute) == 1
-        main_attribute = main_element.attribute[0]
-        assert main_attribute["name"].data == "particleSystemDefinitions"
-        assert main_attribute["type"].data == 15
-        psdl = main_attribute["data"]
-        for i in range(len(psdl)):
+        def edit(psdl, i):
             psd = psdl[i].data
             assert psd["type"].data == "DmeParticleSystemDefinition"
             name = psd["name"].data
@@ -743,18 +760,9 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                             psd.attribute.data = e.attribute.data
                             break
                 del replacements[name]
-        assert not replacements
 
-        if nohats_dir:
-            dest = nohats_file(file)
-            dest_dir = dirname(dest)
-            if not exists(dest_dir):
-                makedirs(dest_dir)
-            with open(dest, "wb") as s:
-                p.full_pack(s)
-        else:
-            s = FakeWriteStream(0, file)
-            p.full_pack(s)
+        edit_particle_file(edit, file)
+        assert not replacements
 
     return visuals
 
@@ -783,6 +791,42 @@ def fix_skins(courier_model, flying_courier_model):
         with open(nohats_file(model), "r+b") as s:
             s.seek(m["skinindex"].data)
             m["skin"].field.pack(s)
+
+def fix_terrorblade_color(npc_heroes):
+    particle_file = npc_heroes["DOTAHeroes"]["npc_dota_hero_terrorblade"]["ParticleFile"]
+
+    def get_key(l, name, value):
+        l = [x for x in l if name in x and x[name].data == value]
+        assert len(l) == 1, l
+        return l[0]
+
+    def edit1(psd):
+        for name in ["initializers", "operators"]:
+            a = get_key(psd.attribute, "name", name)
+            assert a["type"].data == 15
+            l = a["data"]
+            to_delete = set()
+            for i in reversed(range(len(l))):
+                attribute = l[i].data.attribute
+                function_name = get_key(attribute, "name", "functionName")
+                assert function_name["type"].data == 5
+                if function_name["data"].data == "Remap Control Point to Vector":
+                    control_point = get_key(attribute, "name", "input control point number")
+                    assert control_point["type"].data == 2
+                    assert control_point["data"].data == 15
+                    del l[i]
+
+        children = get_key(psd.attribute, "name", "children")
+        assert children["type"].data == 15
+        for child in children["data"]:
+            real_child = get_key(child.data.attribute, "name", "child")
+            edit1(real_child["data"].data)
+
+    def edit(psdl, i):
+        psd = psdl[i].data
+        edit1(psd)
+
+    edit_particle_file(edit, particle_file)
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
