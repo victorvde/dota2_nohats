@@ -40,7 +40,10 @@ class ElementIndex(BaseField):
         self.index_field.pack(s)
 
     def serialize(self):
-        return self.index_field.data
+        return {
+            "element": self.data.serialize(),
+            "attrib": self.data.attribute.serialize(),
+        }
 
 class Attribute(Struct):
     def fields(self, namefield, stringfield, elementindexfield):
@@ -129,3 +132,11 @@ class PCF(Struct):
         self["elements"].data = [self["elements"].data[0]]
         self["attributes"].data = [self["attributes"].data[0]]
         self["elements"][0].attribute = self["attributes"][0]
+
+if __name__ == "__main__":
+    import json
+    p = PCF()
+    with open("x.pcf", "rb") as s:
+        p.unpack(s)
+    p.minimize()
+    print(json.dumps(p.serialize(), indent=4))
