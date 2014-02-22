@@ -26,6 +26,13 @@ def dota_file(p):
 def nohats_file(p):
     return join(nohats_dir, p)
 
+def source_file(src):
+    if exists(nohats_file(src)):
+        src = nohats_file(src)
+    else:
+        src = dota_file(src)
+    return src
+
 def nohats():
     header("Loading items_game.txt")
     with open(dota_file("scripts/items/items_game.txt"), "rt") as input:
@@ -133,10 +140,7 @@ def copy(src, dest):
     print("copy '{}' to '{}'".format(src, dest))
     if nohats_dir is None:
         return
-    if exists(nohats_file(src)):
-        src = nohats_file(src)
-    else:
-        src = dota_file(src)
+    src = source_file(src)
     dest = nohats_file(dest)
     if src == dest:
         return
@@ -156,7 +160,7 @@ def copy_model(src, dest):
     copy(src + ".mdl", dest + ".mdl")
     copy(src + ".vvd", dest + ".vvd")
     copy(src + ".dx90.vtx", dest + ".dx90.vtx")
-    if exists(dota_file(src + ".cloth")):
+    if exists(source_file(src + ".cloth")):
         copy(src + ".cloth", dest + ".cloth")
     elif exists(dota_file(dest + ".cloth")):
         print("Create empty cloth file '{}'".format(dest + ".cloth"))
@@ -180,7 +184,7 @@ def fix_item_model(item, default_item):
         copy_model(default_item["model_player"], item["model_player"])
         if has_alternate_skins(item):
             m = MDL()
-            with open(dota_file(default_item["model_player"]), "rb") as s:
+            with open(source_file(default_item["model_player"]), "rb") as s:
                 m.unpack(s)
             if m["numskinfamilies"].data != 1:
                 print("Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"]), file=stderr)
@@ -310,7 +314,7 @@ def copy_sound(src, dest):
 
 def copy_wave(src, dest):
     print("copy wave '{}' to '{}'".format(src, dest))
-    src = dota_file(src)
+    src = source_file(src)
     input = wave_open(src, "rb")
     try:
         frames_available = input.getnframes()
@@ -490,13 +494,13 @@ def fix_animations(d, visuals, npc_heroes):
         if k == "Version":
             continue
         model = v["Model"]
-        if not exists(dota_file(model)):
+        if not exists(source_file(model)):
             continue
 
         mung_offsets = set()
         mung_sequence_names = set()
         model_parsed = MDL()
-        with open(dota_file(model), "rb") as s:
+        with open(source_file(model), "rb") as s:
             model_parsed.unpack(s)
         for sequence in model_parsed.data["localsequence"]:
             if sequence["activitynameindex"][1] in ignored:
@@ -650,12 +654,12 @@ def get_particle_file_systems(d, units, npc_heroes):
 
     particle_file_systems = {}
     for file in files:
-        if not exists(dota_file(file)):
+        if not exists(source_file(file)):
             print("Warning: referenced particle file '{}' doesn't exist.".format(file), file=stderr)
             continue
         particle_file_systems[file] = []
         pcf = PCF(include_attributes=False)
-        with open(dota_file(file), "rb") as s:
+        with open(source_file(file), "rb") as s:
             pcf.unpack(s)
         for e in pcf["elements"]:
             if e["type"].data == "DmeParticleSystemDefinition":
@@ -712,7 +716,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 print("\t{} -> {} ({})".format(system, replacement_system, replacement_file))
 
         p = PCF()
-        with open(dota_file(file), "rb") as s:
+        with open(source_file(file), "rb") as s:
             p.unpack(s)
         p.minimize()
         main_element = p["elements"][0]
@@ -732,7 +736,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                 else:
                     replacement_file, replacement_system = replacements[name]
                     o = PCF()
-                    with open(dota_file(replacement_file), "rb") as s:
+                    with open(source_file(replacement_file), "rb") as s:
                         o.unpack(s)
                     for e in o["elements"]:
                         if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data == replacement_system:
@@ -768,7 +772,7 @@ def fix_skins(courier_model, flying_courier_model):
         ]
     for model in skins:
         m = MDL()
-        with open(dota_file(model), "rb") as s:
+        with open(source_file(model), "rb") as s:
             m.unpack(s)
         assert m["numskinfamilies"] != 1, (model, m["numskinfamilies"])
         for i in range(1, m["numskinfamilies"].data):
