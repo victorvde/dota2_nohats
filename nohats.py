@@ -616,6 +616,8 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
             effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"]
             add_replacement(effect, None)
 
+    add_replacement("terrorblade_arcana_enemy_death", None)
+
     forwarded_particle_replacements = OrderedDict()
     for system, default_system in particle_replacements.items():
         while default_system in particle_replacements:
