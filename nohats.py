@@ -807,7 +807,6 @@ def fix_terrorblade_color(npc_heroes):
             a = get_key(psd.attribute, "name", name)
             assert a["type"].data == 15
             l = a["data"]
-            to_delete = set()
             for i in reversed(range(len(l))):
                 attribute = l[i].data.attribute
                 function_name = get_key(attribute, "name", "functionName")
