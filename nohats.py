@@ -153,8 +153,10 @@ def copy(src, dest):
         copyfile(src, dest)
 
 def copy_model(src, dest):
-    if src == dest:
-        return
+    if src != dest:
+        copy_model_always(src, dest)
+
+def copy_model_always(src, dest):
     assert src.endswith(".mdl")
     src = src[:-len(".mdl")]
     assert dest.endswith(".mdl")
@@ -515,7 +517,7 @@ def fix_animations(d, visuals, npc_heroes):
         if not mung_offsets:
             continue
 
-        copy(model, model)
+        copy_model_always(model, model)
         for mung_sequence_name in sorted(list(mung_sequence_names)):
             print("Munging sequence '{}'".format(mung_sequence_name))
         if nohats_dir is None:
@@ -787,7 +789,7 @@ def fix_skins(courier_model, flying_courier_model):
         assert m["numskinfamilies"] != 1, (model, m["numskinfamilies"])
         for i in range(1, m["numskinfamilies"].data):
             m["skin"].field[i].data = m["skin"].field[0].data
-        copy(model, model)
+        copy_model_always(model, model)
         if nohats_dir is None:
             continue
         with open(nohats_file(model), "r+b") as s:
