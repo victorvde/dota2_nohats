@@ -26,7 +26,7 @@ def fix_colors(psd):
         if function_name["data"].data == "Remap Control Point to Vector":
             output_field = get_key(attribute, "name", "output field")
             assert output_field["type"].data == 2
-            assert output_field["data"].data == 6
+            assert output_field["data"].data in [6, 22] # color, glow_rgb
             modify = "copy"
             scale = get_key(attribute, "name", "output is scalar of initial random range")
             if scale:
