@@ -658,7 +658,7 @@ def get_particle_file_systems(d, units, npc_heroes):
         if v["file"] not in files:
             files.append(v["file"])
 
-    particle_file_systems = {}
+    particle_file_systems = OrderedDict()
     for file in files:
         if not exists(source_file(file)):
             print("Warning: referenced particle file '{}' doesn't exist.".format(file), file=stderr)
@@ -735,7 +735,6 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
             if default_system_files == []:
                 file_replacements[file][system] = None
             else:
-                # TODO: figure out the right choice when len(default_system_files) > 1
                 file_replacements[file][system] = (default_system_files[0], default_system)
 
     for file, replacements in file_replacements.items():
