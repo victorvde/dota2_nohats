@@ -618,7 +618,15 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
             effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"]
             add_replacement(effect, None)
 
+    # hard-coded stuff
     add_replacement("terrorblade_arcana_enemy_death", None)
+    add_replacement("teleport_start_ti4", "teleport_start")
+    add_replacement("teleport_end_ti4", "teleport_end")
+    add_replacement("blink_dagger_start_ti4", "blink_dagger_start")
+    add_replacement("blink_dagger_end_ti4", "blink_dagger_end")
+    add_replacement("dagon_ti4", "dagon")
+    add_replacement("radiant_fountain_regen_ti4", "radiant_fountain_regen")
+    add_replacement("bottle_ti4", "bottle")
 
     forwarded_particle_replacements = OrderedDict()
     for system, default_system in particle_replacements.items():
@@ -642,13 +650,19 @@ def get_particle_file_systems(d, units, npc_heroes):
             v = v[1:]
         files.append(v)
 
-    for id, item in d["items_game"]["items"]:
-        if "particle_file" in item and item["particle_file"] not in files:
-            files.append(item["particle_file"])
-
     for id, item in chain(units["DOTAUnits"], npc_heroes["DOTAHeroes"]):
         if "ParticleFile" in item and item["ParticleFile"] not in files:
             files.append(item["ParticleFile"])
+
+    with open(dota_file("scripts/precache.txt"), "rt") as s:
+        p = load(s)
+        for k, v in p["precache"]:
+            if k == "particlefile" and v not in files:
+                files.append(v)
+
+    for id, item in d["items_game"]["items"]:
+        if "particle_file" in item and item["particle_file"] not in files:
+            files.append(item["particle_file"])
 
     for id, v in d["items_game"]["attribute_controlled_attached_particles"]:
         if v.get("resource") is not None and v["resource"] not in files:
