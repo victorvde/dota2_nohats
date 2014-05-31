@@ -55,6 +55,8 @@ def nohats():
     fix_models(d, defaults, default_ids)
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
+    header("Fixing hex models")
+    visuals = fix_hex_models(visuals)
     header("Fixing sounds")
     visuals = fix_sounds(visuals)
     header("Fixing icons")
@@ -233,6 +235,7 @@ def filter_visuals(visuals):
         "animation_modifiers",
         "skin",
         "additional_wearable",
+        "player_card",
     ]
     visuals = [(id, k, v) for (id, k, v) in visuals if k not in ignore_keys]
 
@@ -300,6 +303,13 @@ def assetmodifier(iterable):
     for id, key, visual in iterable:
         yield assetmodifier1(visual)
 
+def fix_hex_models(visuals):
+    sound_visuals, visuals = filtersplit(visuals, isvisualtype("hex_model"))
+    for asset, modifier in assetmodifier(sound_visuals):
+        assert asset == "hex"
+        copy_model("models/props_gameplay/frog.mdl", modifier)
+    return visuals
+
 def sound_files(sound):
     prefix_chars = "*#@<>^)(}$!?"
     if "wave" in sound:
@@ -348,7 +358,7 @@ def fix_sounds(visuals):
     sounds = KVList()
     for root, _, files in walk(dota_file("scripts")):
         for f in files:
-            if not (f.startswith("game_sounds_") and f.endswith(".txt")):
+            if not (f.startswith("game_sounds") and f.endswith(".txt")):
                 continue
             if f.endswith("_phonemes.txt"):
                 continue
@@ -375,12 +385,14 @@ def fix_hero_icons(visuals):
     icon_visuals, visuals = filtersplit(visuals, isvisualtype("icon_replacement"))
     for asset, modifier in assetmodifier(icon_visuals):
         prefix = "npc_dota_hero_"
-        assert asset.startswith(prefix)
-        asset = asset[len(prefix):]
-        assert modifier.startswith(prefix)
-        modifier = modifier[len(prefix):]
-        for image_dir in ["resource/flash3/images/heroes", "resource/flash3/images/miniheroes"]:
-            copy(image_dir + "/" + asset + ".png", image_dir + "/" + modifier + ".png")
+        if asset.startswith(prefix):
+            asset = asset[len(prefix):]
+            assert modifier.startswith(prefix)
+            modifier = modifier[len(prefix):]
+            for image_dir in ["resource/flash3/images/heroes", "resource/flash3/images/miniheroes"]:
+                copy(image_dir + "/" + asset + ".png", image_dir + "/" + modifier + ".png")
+        else:
+            copy("resource/flash3/images/items/" + asset + ".png", "resource/flash3/images/items/" + modifier + ".png")
 
     return visuals
 
@@ -536,17 +548,18 @@ def get_particlesystems(item):
     if item is not None:
         for key, v in item.get("visuals", []):
             if key.startswith("attached_particlesystem"):
-                if v["system"] == "chaos_knight_horse_ambient_parent":
+                system_name = v["system"].lower()
+                if system_name == "chaos_knight_horse_ambient_parent":
                     pss.append("chaos_knight_horse_ambient")
                     pss.append("chaos_knight_ambient_tail")
-                elif v["system"] not in pss:
-                    pss.append(v["system"])
+                elif system_name not in pss:
+                    pss.append(system_name)
     return pss
 
 def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
     particle_attachments = OrderedDict()
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
-        name = v["system"]
+        name = v["system"].lower()
         attach_type = v["attach_type"]
         attach_entity = v["attach_entity"]
         control_points = v.get("control_points")
@@ -603,19 +616,20 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
     for id, k, v in particle_visuals:
         asset, modifier = assetmodifier1(v)
         item = get_item(d, id)
-        add_replacement(modifier, asset)
+        add_replacement(modifier.lower(), asset.lower())
 
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
-        if v["system"].startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
-            add_replacement(v["system"], None)
+        system_name = v["system"].lower()
+        if system_name.startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
+            add_replacement(system_name, None)
 
     for k, v in d["items_game"]["particle_modifiers"]:
-        add_replacement(v["modifier"], v["effect"])
+        add_replacement(v["modifier"].lower(), v["effect"].lower())
 
     for id, socket in sockets:
         if "effect" in socket:
             effect_id = socket["effect"]
-            effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"]
+            effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"].lower()
             add_replacement(effect, None)
 
     # hard-coded stuff
@@ -683,10 +697,11 @@ def get_particle_file_systems(d, units, npc_heroes):
             pcf.unpack(s)
         for e in pcf["elements"]:
             if e["type"].data == "DmeParticleSystemDefinition":
-                if e["name"].data not in particle_file_systems[file]:
-                    particle_file_systems[file].append(e["name"].data)
+                system_name = e["name"].data.lower()
+                if system_name not in particle_file_systems[file]:
+                    particle_file_systems[file].append(system_name)
                 else:
-                    print("Warning: double particle system definition '{}' in '{}'".format(e["name"].data, file), file=stderr)
+                    print("Warning: double particle system definition '{}' in '{}'".format(system_name, file), file=stderr)
 
     return particle_file_systems
 
@@ -763,7 +778,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
         def edit(psdl, i):
             psd = psdl[i].data
             assert psd["type"].data == "DmeParticleSystemDefinition"
-            name = psd["name"].data
+            name = psd["name"].data.lower()
             if name in replacements:
                 if replacements[name] is None:
                     psd.attribute.data = []
@@ -773,7 +788,7 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                     with open(source_file(replacement_file), "rb") as s:
                         o.unpack(s)
                     for e in o["elements"]:
-                        if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data == replacement_system:
+                        if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data.lower() == replacement_system:
                             psd.attribute.data = e.attribute.data
                             break
                 del replacements[name]
