@@ -356,7 +356,7 @@ def copy_wave(src, dest):
 def fix_sounds(visuals):
     # get sound list
     sounds = KVList()
-    for root, _, files in walk(dota_file("scripts")):
+    for root, _, files in chain(walk(dota_file("sound")), walk(dota_file("scripts"))):
         for f in files:
             if not (f.startswith("game_sounds") and f.endswith(".txt")):
                 continue
@@ -371,8 +371,6 @@ def fix_sounds(visuals):
     # fix sound visuals
     sound_visuals, visuals = filtersplit(visuals, isvisualtype("sound"))
     for asset, modifier in assetmodifier(sound_visuals):
-        if asset == "DOTAMusic_Hero.Death":
-            asset = "DOTAMusic.StateHeroDeath"
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
         for modifier_file in modifier_files:
