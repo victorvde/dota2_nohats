@@ -117,10 +117,12 @@ def get_defaults(d):
     defaults = {}
     for id, item in d["items_game"]["items"]:
         if get_attrib(d, item, "baseitem") == "1":
-            hero = get_hero(d, item)
-            assert hero is not None
             slot = get_slot(d, item)
-            assert slot is not None
+            if slot == "weather":
+                continue
+            assert slot is not None, id
+            hero = get_hero(d, item)
+            assert hero is not None, id
             if (hero, slot) in defaults:
                 print("Warning: id '{}' is a duplicate default for '{}'".format(id, (hero, slot)), file=stderr)
             else:
@@ -250,6 +252,8 @@ def filter_visuals(visuals):
         "loading_screen",
         "response_criteria",
         "custom_kill_effect",
+        "weather",
+        "soundscape",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
@@ -803,10 +807,6 @@ def fix_skins(courier_model, flying_courier_model):
         "models/heroes/bounty_hunter/bounty_hunter.mdl",
         "models/heroes/lina/lina.mdl",
         "models/heroes/legion_commander/legion_commander.mdl",
-        "models/heroes/tiny_01/tiny_01.mdl",
-        "models/heroes/tiny_02/tiny_02.mdl",
-        "models/heroes/tiny_03/tiny_03.mdl",
-        "models/heroes/tiny_04/tiny_04.mdl",
         ]
     for model in skins:
         m = MDL()
