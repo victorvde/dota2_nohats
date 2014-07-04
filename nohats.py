@@ -189,6 +189,9 @@ def has_alternate_skins(item):
 
 def fix_item_model(item, default_item, model_player):
     if default_item is not None:
+        if not model_player in default_item:
+            print("Warning: missing default model for '{}'".format(default_item["name"]), file=stderr)
+            return
         copy_model(default_item[model_player], item[model_player])
         if has_alternate_skins(item):
             m = MDL()
