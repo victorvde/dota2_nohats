@@ -187,32 +187,31 @@ def has_alternate_skins(item):
                 return True
     return False
 
-def fix_item_model(item, default_item):
+def fix_item_model(item, default_item, model_player):
     if default_item is not None:
-        copy_model(default_item["model_player"], item["model_player"])
+        copy_model(default_item[model_player], item[model_player])
         if has_alternate_skins(item):
             m = MDL()
-            with open(source_file(default_item["model_player"]), "rb") as s:
+            with open(source_file(default_item[model_player]), "rb") as s:
                 m.unpack(s)
             if m["numskinfamilies"].data != 1:
-                print("Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item["model_player"], m["numskinfamilies"].data, item["model_player"]), file=stderr)
+                print("Warning: model '{}' has '{}' skin families, need to fix '{}'".format(default_item[model_player], m["numskinfamilies"].data, item[model_player]), file=stderr)
     else:
-        copy_model("models/development/invisiblebox.mdl", item["model_player"])
+        copy_model("models/development/invisiblebox.mdl", item[model_player])
 
 def fix_models(d, defaults, default_ids):
     for id, item in d["items_game"]["items"]:
         if id == "default" or id in default_ids:
             continue
-        if not "model_player" in item:
-            continue
-        if "model_player" in item:
-            default_item = get_default_item(d, defaults, item)
-            fix_item_model(item, default_item)
+        for model_player in ["model_player", "model_player1", "model_player2", "model_player3", "model_player4"]:
+            if model_player in item:
+                default_item = get_default_item(d, defaults, item)
+                fix_item_model(item, default_item, model_player)
         if "visuals" in item:
             if "additional_wearable" in item["visuals"]:
                 _, additional_item = find_item_by_name(d, item["visuals"]["additional_wearable"])
                 _, additional_default_item = find_item_by_name(d, default_item["visuals"]["additional_wearable"])
-                fix_item_model(additional_item, additional_default_item)
+                fix_item_model(additional_item, additional_default_item, "model_player")
 
 def get_visuals(d, default_ids):
     # get visual modifiers
@@ -278,7 +277,7 @@ def fix_style_models(d, visuals, defaults):
         for styleid, v in visual:
             if not "model_player" in v:
                 continue
-            fix_item_model(v, default_item)
+            fix_item_model(v, default_item, "model_player")
 
     return visuals
 
