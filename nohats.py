@@ -628,7 +628,18 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
             add_replacement(system_name, None)
 
     for k, v in d["items_game"]["particle_modifiers"]:
-        add_replacement(v["modifier"].lower(), v["effect"].lower())
+        if "num_effects" in v:
+            n = int(v["num_effects"])
+            i = 0
+            while n > 0:
+                l = str(i)
+                if l in v:
+                    n -= 1
+                    u = v[l]
+                    add_replacement(u["modifier"].lower(), u["effect"].lower())
+                i += 1
+        else:
+            add_replacement(v["modifier"].lower(), v["effect"].lower())
 
     for id, socket in sockets:
         if "effect" in socket:
