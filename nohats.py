@@ -63,7 +63,7 @@ def nohats():
     visuals = fix_hero_icons(visuals)
     visuals = fix_ability_icons(visuals)
     header("Fixing summons")
-    visuals = fix_summons(visuals, units)
+    visuals = fix_summons(visuals, units, d, default_ids)
     header("Fixing alternate hero models")
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
@@ -415,7 +415,17 @@ def get_units():
         units = load(input)
     return units
 
-def fix_summons(visuals, units):
+def fix_summons(visuals, units, d, default_ids):
+    # get default entity_model (tiny's tree)
+    default_entity_models = {}
+    for default_id in default_ids:
+        item = d["items_game"]["items"][default_id]
+        if "visuals" in item:
+            for k, v in item["visuals"]:
+                if isvisualtype("entity_model")((default_id, k, v)):
+                    asset, modifier = assetmodifier1(v)
+                    default_entity_models[asset] = modifier
+
     # fix summon overrides
     entity_model_visuals, visuals = filtersplit(visuals, isvisualtype("entity_model"))
     for asset, modifier in assetmodifier(entity_model_visuals):
@@ -429,6 +439,8 @@ def fix_summons(visuals, units):
             npc = units["DOTAUnits"].get(asset + "_1")
         if npc is not None:
             asset_model = npc["Model"]
+        elif asset in default_entity_models:
+            asset_model = default_entity_models[asset]
         elif asset == "dota_death_prophet_exorcism_spirit":
             # wth?
             asset_model = "models/heroes/death_prophet/death_prophet_ghost.mdl"
