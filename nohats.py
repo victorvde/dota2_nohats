@@ -818,6 +818,9 @@ def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
                         if e["type"].data == "DmeParticleSystemDefinition" and e["name"].data.lower() == replacement_system:
                             psd.attribute.data = e.attribute.data
                             break
+                    else:
+                        assert False, "Could not find system {} in file {}".format(replacement_system, replacement_file)
+
                 del replacements[name]
 
         edit_particle_file(edit, file)
