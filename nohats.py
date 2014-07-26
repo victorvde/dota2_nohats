@@ -240,6 +240,7 @@ def filter_visuals(visuals):
         "skin",
         "additional_wearable",
         "player_card",
+        "hide_on_portrait",
     ]
     visuals = [(id, k, v) for (id, k, v) in visuals if k not in ignore_keys]
 
