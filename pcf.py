@@ -25,6 +25,8 @@ class ElementIndex(BaseField):
 
     def unpack_data(self, s):
         self.index_field.unpack(s)
+        if self.index_field.data < 0:
+            return None
         return self.elements[self.index_field.data]
 
     def pack_data(self, s, data):
@@ -40,10 +42,16 @@ class ElementIndex(BaseField):
         self.index_field.pack(s)
 
     def serialize(self):
-        return {
-            "element": self.data.serialize(),
-            "attrib": self.data.attribute.serialize(),
-        }
+        if self.data is None:
+            return {
+                "element": None,
+                "index": self.index_field.data,
+            }
+        else:
+            return {
+                "element": self.data.serialize(),
+                "attrib": self.data.attribute.serialize(),
+            }
 
 class Attribute(Struct):
     def fields(self, namefield, stringfield, elementindexfield):
@@ -123,7 +131,7 @@ class PCF(Struct):
                         lambda: Attribute(
                             namefield,
                             stringfield,
-                            lambda: ElementIndex(self["elements"], f, Format("I"))))))
+                            lambda: ElementIndex(self["elements"], f, Format("i"))))))
             for i in range(len(self["elements"])):
                 self["elements"][i].attribute = self["attributes"][i]
 
