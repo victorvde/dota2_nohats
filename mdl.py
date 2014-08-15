@@ -46,6 +46,18 @@ class MDL(Struct):
         self.F("localnodeindex", Format("I"))
         self.F("localnodenameindex", Format("I"))
 
+        self.F("flexdesc", Format("II"))
+        self.F("flexcontroller", Format("II"))
+        self.F("flexrule", Format("II"))
+        self.F("ikchain", Format("II"))
+        self.F("mouth", Format("II"))
+
+        self.F("localposeparameters", Format("II"))
+        self.F("surfacepropindex", Format("I"))
+
+        self.F("keyvalueindex", Format("I"))
+        self.F("keyvaluesize", Format("I"))
+
         # pointed fields
         # self.F("localanim", Pointer(self["localanimoffset"].data, Array(self["numlocalanim"].data, LocalAnim)))
         self.F("localsequence", Pointer(self["localsequenceoffset"].data, Array(self["numlocalsequence"].data, LocalSequence)))
@@ -54,18 +66,10 @@ class MDL(Struct):
                 Array(self["numskinfamilies"].data,
                     lambda: Array(self["numskinref"].data,
                         lambda: Format("h")))))
+        self.F("keyvalue", Pointer(self["keyvalueindex"].data, FixedString(self["keyvaluesize"].data)))
 
-        # rest broken due to unkown fields added
+        # here be dragons
         return
-
-        self.F("flexdesc", Format("II"))
-        self.F("flexcontroller", Format("II"))
-        self.F("flexrule", Format("II"))
-        self.F("ikchain", Format("II"))
-        self.F("mouth", Format("II"))
-
-        self.F("keyvalueindex", Format("I"))
-        self.F("keyvaluesize", Format("I"))
 
         self.F("localikautoplaylock", Format("II"))
 

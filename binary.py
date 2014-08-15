@@ -350,6 +350,9 @@ class Pointer(ContainerField):
     def data(self, v):
         self.field.data = v
 
+    def pack_data(self, s, data):
+        pass
+
 class DataPointer(ContainerField):
     def __init__(self, offset_field, field):
         self.offset_field = offset_field
