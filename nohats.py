@@ -9,7 +9,6 @@ from os import makedirs, listdir, walk, name as os_name
 from kvlist import KVList
 from mdl import MDL
 from pcf import PCF
-from socket import parse_socket_value
 from wave import open as wave_open
 from collections import OrderedDict
 from io import StringIO
@@ -44,8 +43,6 @@ def nohats():
     header("Getting visuals")
     visuals = get_visuals(d, default_ids)
     visuals = filter_visuals(visuals)
-    header("Getting sockets")
-    sockets = get_sockets(d)
     header("Loading npc_units.txt")
     units = get_units()
     header("Loading npc_heroes.txt")
@@ -82,7 +79,7 @@ def nohats():
     header("Fixing Terrorblade color")
     fix_terrorblade_color(npc_heroes)
     header("Fixing particles")
-    visuals = fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes)
+    visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
 
     assert not visuals, visuals
 
@@ -225,6 +222,12 @@ def get_visuals(d, default_ids):
         if "visuals" in item:
             for k, v in item["visuals"]:
                 visuals.append((id, k, v))
+
+    for k, v in d["items_game"]["asset_modifiers"]:
+        for k_, v_ in v:
+            if not k_.isdigit():
+                continue
+            visuals.append((None, "asset_modifier"+k+"_"+k_, v_))
 
     return visuals
 
@@ -403,7 +406,7 @@ def fix_hero_icons(visuals):
 
 def fix_ability_icons(visuals):
     # fix spell icon visuals (lina arcana)
-    ability_icon_visuals, visuals = filtersplit(visuals, isvisualtype("ability_icon_replacement"))
+    ability_icon_visuals, visuals = filtersplit(visuals, isvisualtype("ability_icon"))
     for asset, modifier in assetmodifier(ability_icon_visuals):
         image_dir = "resource/flash3/images/spellicons"
         copy(image_dir + "/" + asset + ".png", image_dir + "/" + modifier + ".png")
@@ -476,23 +479,23 @@ def fix_particle_snapshots(visuals):
     return visuals
 
 def fix_couriers(visuals, units, courier_model):
-    assets = []
+    couriers = []
     courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier"))
     for asset, modifier in assetmodifier(courier_visuals):
-        if asset not in assets:
-            assets.append(asset)
-    for asset in assets:
-        copy_model(courier_model, asset)
+        if modifier not in couriers:
+            couriers.append(modifier)
+    for courier in couriers:
+        copy_model(courier_model, courier)
     return visuals
 
 def fix_flying_couriers(visuals, units, flying_courier_model):
-    assets = []
+    couriers = []
     flying_courier_visuals, visuals = filtersplit(visuals, isvisualtype("courier_flying"))
     for asset, modifier in assetmodifier(flying_courier_visuals):
-        if asset not in assets:
-            assets.append(asset)
-    for asset in assets:
-        copy_model(flying_courier_model, asset)
+        if modifier not in couriers:
+            couriers.append(modifier)
+    for courier in couriers:
+        copy_model(flying_courier_model, courier)
 
     return visuals
 
@@ -500,14 +503,6 @@ def get_npc_heroes():
     with open(dota_file("scripts/npc/npc_heroes.txt"), "rt") as input:
         npc_heroes = load(input)
     return npc_heroes
-
-def get_sockets(d):
-    sockets = []
-    for id, item in d["items_game"]["items"]:
-        for key, attribute in item.get("attributes", []):
-            if attribute.get("attribute_class") == "socket":
-                sockets.append((id, parse_socket_value(attribute["value"])))
-    return sockets
 
 def fix_animations(d, visuals, npc_heroes):
     ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT"]
@@ -517,10 +512,6 @@ def fix_animations(d, visuals, npc_heroes):
     activity_visuals, visuals = filtersplit(visuals, isvisualtype("activity"))
     for id, key, visual in activity_visuals:
         asset, modifier = assetmodifier1(visual)
-        item_activities.add(modifier)
-
-    for id, gem in d["items_game"]["anim_modifiers"]:
-        modifier = gem["name"]
         item_activities.add(modifier)
 
     for k, v in npc_heroes["DOTAHeroes"]:
@@ -573,7 +564,7 @@ def get_particlesystems(item):
                     pss.append(system_name)
     return pss
 
-def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
+def get_particle_replacements(d, defaults, visuals, default_ids):
     particle_attachments = OrderedDict()
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
         name = v["system"].lower()
@@ -632,33 +623,12 @@ def get_particle_replacements(d, defaults, visuals, sockets, default_ids):
     particle_visuals, visuals = filtersplit(visuals, isvisualtype("particle"))
     for id, k, v in particle_visuals:
         asset, modifier = assetmodifier1(v)
-        item = get_item(d, id)
         add_replacement(modifier.lower(), asset.lower())
 
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
         system_name = v["system"].lower()
-        if system_name.startswith("courier_") and "resource" in v and v["resource"].startswith("particles/econ/courier/"):
+        if "resource" in v and v["resource"].startswith("particles/econ/courier/"):
             add_replacement(system_name, None)
-
-    for k, v in d["items_game"]["particle_modifiers"]:
-        if "num_effects" in v:
-            n = int(v["num_effects"])
-            i = 0
-            while n > 0:
-                l = str(i)
-                if l in v:
-                    n -= 1
-                    u = v[l]
-                    add_replacement(u["modifier"].lower(), u["effect"].lower())
-                i += 1
-        else:
-            add_replacement(v["modifier"].lower(), v["effect"].lower())
-
-    for id, socket in sockets:
-        if "effect" in socket:
-            effect_id = socket["effect"]
-            effect = d["items_game"]["attribute_controlled_attached_particles"][effect_id]["system"].lower()
-            add_replacement(effect, None)
 
     # hard-coded stuff
     add_replacement("terrorblade_arcana_enemy_death", None)
@@ -710,8 +680,8 @@ def get_particle_file_systems(d, units, npc_heroes):
         if v.get("resource") is not None and v["resource"] not in files:
             files.append(v["resource"])
 
-    for k, v in d["items_game"]["particle_modifiers"]:
-        if v["file"] not in files:
+    for k, v in d["items_game"]["asset_modifiers"]:
+        if "file" in v and v["file"] not in files:
             files.append(v["file"])
 
     particle_file_systems = OrderedDict()
@@ -759,8 +729,8 @@ def edit_particle_file(f, file):
         s = FakeWriteStream(0, file)
         p.full_pack(s)
 
-def fix_particles(d, defaults, default_ids, visuals, sockets, units, npc_heroes):
-    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, sockets, default_ids)
+def fix_particles(d, defaults, default_ids, visuals, units, npc_heroes):
+    visuals, particle_replacements = get_particle_replacements(d, defaults, visuals, default_ids)
 
     particle_file_systems = get_particle_file_systems(d, units, npc_heroes)
 
