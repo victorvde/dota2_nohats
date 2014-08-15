@@ -49,3 +49,6 @@ class KVList(MutableMapping):
 
     def values(self):
         return [v for k, v in self]
+
+    def __repr__(self):
+        return "KVList({})".format(repr(self.list))
