@@ -27,7 +27,7 @@ def nohats_file(p):
     return join(nohats_dir, p)
 
 def source_file(src):
-    if exists(nohats_file(src)):
+    if nohats_dir and exists(nohats_file(src)):
         src = nohats_file(src)
     else:
         src = dota_file(src)
