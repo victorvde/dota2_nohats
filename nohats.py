@@ -383,8 +383,8 @@ def fix_sounds(visuals):
     for asset, modifier in assetmodifier(sound_visuals):
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
-        for modifier_file in modifier_files:
-            copy_sound("sound/" + asset_files[0], "sound/" + modifier_file)
+        for i in range(len(modifier_files)):
+            copy_sound("sound/" + asset_files[i % len(asset_files)], "sound/" + modifier_files[i])
 
     return visuals
 
