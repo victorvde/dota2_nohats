@@ -327,6 +327,8 @@ def sound_files(sound):
         return [wave.lstrip(prefix_chars) for wave in sound["rndwave"].values()]
 
 def copy_sound(src, dest):
+    if src == dest:
+        return
     if src.endswith(".wav") and dest.endswith(".wav"):
         copy_wave(src, dest)
     elif src.endswith(".mp3") and dest.endswith(".mp3"):
