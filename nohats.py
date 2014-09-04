@@ -115,8 +115,6 @@ def get_defaults(d):
     for id, item in d["items_game"]["items"]:
         if get_attrib(d, item, "baseitem") == "1":
             slot = get_slot(d, item)
-            if slot == "weather":
-                continue
             assert slot is not None, id
             hero = get_hero(d, item)
             assert hero is not None, id
@@ -219,6 +217,9 @@ def get_visuals(d, default_ids):
     for id, item in d["items_game"]["items"]:
         if id == "default" or id in default_ids:
             continue
+        slot = get_slot(d, item)
+        if slot in ["weather", "music"]:
+            continue
         if "visuals" in item:
             for k, v in item["visuals"]:
                 visuals.append((id, k, v))
@@ -258,8 +259,6 @@ def filter_visuals(visuals):
         "loading_screen",
         "response_criteria",
         "custom_kill_effect",
-        "weather",
-        "soundscape",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
