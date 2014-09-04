@@ -381,6 +381,9 @@ def fix_sounds(visuals):
     # fix sound visuals
     sound_visuals, visuals = filtersplit(visuals, isvisualtype("sound"))
     for asset, modifier in assetmodifier(sound_visuals):
+        if not asset in sounds:
+            print("Can't find sound asset {}".format(asset), file=stderr)
+            continue
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
         for i in range(len(modifier_files)):
