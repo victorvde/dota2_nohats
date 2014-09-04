@@ -334,7 +334,7 @@ def copy_sound(src, dest):
     elif src.endswith(".mp3") and dest.endswith(".mp3"):
         copy(src, dest)
     else:
-        print("Unknown sound extension copy for '{}' to '{}'".format(src, dest), file=stderr)
+        print("Warning: unknown sound extension copy for '{}' to '{}'".format(src, dest), file=stderr)
         #assert False, "Unknown sound extension copy for '{}' to '{}'".format(src, dest)
 
 def copy_wave(src, dest):
@@ -383,7 +383,7 @@ def fix_sounds(visuals):
     sound_visuals, visuals = filtersplit(visuals, isvisualtype("sound"))
     for asset, modifier in assetmodifier(sound_visuals):
         if not asset in sounds:
-            print("Can't find sound asset {}".format(asset), file=stderr)
+            print("Warning: can't find sound asset {}".format(asset), file=stderr)
             continue
         asset_files = sound_files(sounds[asset])
         modifier_files = sound_files(sounds[modifier])
@@ -582,6 +582,7 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
         attachment = particle_attachments.get(system)
         default_attachment = particle_attachments.get(default_system)
         if attachment and default_attachment and attachment != default_attachment:
+            print("Warning: not using {} to replace {} because attachments differ ".format(default_system, system), file=stderr)
             default_system = None
 
         if system in particle_replacements:
