@@ -34,7 +34,7 @@ def source_file(src):
 
 def nohats():
     header("Loading items_game.txt")
-    with open(dota_file("scripts/items/items_game.txt"), "rt") as input:
+    with open(dota_file("scripts/items/items_game.txt"), "rt", encoding="utf-8") as input:
         d = load(input)
 
     header("Getting defaults")
@@ -375,7 +375,7 @@ def fix_sounds(visuals):
                 continue
             if f.endswith("_manifest.txt"):
                 continue
-            with open(join(root, f), "rt") as s:
+            with open(join(root, f), "rt", encoding="utf-8") as s:
                 part_sounds = load(s)
             sounds.update(list(part_sounds))
 
@@ -419,7 +419,7 @@ def fix_ability_icons(visuals):
 
 def get_units():
     # get unit model list
-    with open(dota_file("scripts/npc/npc_units.txt"), "rt") as input:
+    with open(dota_file("scripts/npc/npc_units.txt"), "rt", encoding="utf-8") as input:
         units = load(input)
     return units
 
@@ -504,7 +504,7 @@ def fix_flying_couriers(visuals, units, flying_courier_model):
     return visuals
 
 def get_npc_heroes():
-    with open(dota_file("scripts/npc/npc_heroes.txt"), "rt") as input:
+    with open(dota_file("scripts/npc/npc_heroes.txt"), "rt", encoding="utf-8") as input:
         npc_heroes = load(input)
     return npc_heroes
 
@@ -656,7 +656,7 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
 def get_particle_file_systems(d, units, npc_heroes):
     files = []
 
-    with open(dota_file("particles/particles_manifest.txt"), "rt") as s:
+    with open(dota_file("particles/particles_manifest.txt"), "rt", encoding="utf-8") as s:
         l = s.readline().rstrip("\n")
         l = "\"" + l + "\""
         l += s.read()
@@ -671,7 +671,7 @@ def get_particle_file_systems(d, units, npc_heroes):
         if "ParticleFile" in item and item["ParticleFile"] not in files:
             files.append(item["ParticleFile"])
 
-    with open(dota_file("scripts/precache.txt"), "rt") as s:
+    with open(dota_file("scripts/precache.txt"), "rt", encoding="utf-8") as s:
         p = load(s)
         for k, v in p["precache"]:
             if k == "particlefile" and v not in files:
