@@ -76,8 +76,8 @@ def nohats():
     header("Fixing couriers")
     visuals = fix_couriers(visuals, units, courier_model)
     visuals = fix_flying_couriers(visuals, units, flying_courier_model)
-    header("Fixing Terrorblade color")
-    fix_terrorblade_color(npc_heroes)
+    header("Fixing particle color")
+    fix_particle_color(npc_heroes)
     header("Fixing particles")
     visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
 
@@ -826,9 +826,7 @@ def fix_skins(courier_model, flying_courier_model):
             s.seek(m["skinindex"].data)
             m["skin"].field.pack(s)
 
-def fix_terrorblade_color(npc_heroes):
-    particle_file = npc_heroes["DOTAHeroes"]["npc_dota_hero_terrorblade"]["ParticleFile"]
-
+def fix_particle_color(npc_heroes):
     def get_key(l, name, value):
         l = [x for x in l if name in x and x[name].data == value]
         assert len(l) == 1, l
@@ -859,7 +857,10 @@ def fix_terrorblade_color(npc_heroes):
         psd = psdl[i].data
         edit1(psd)
 
-    edit_particle_file(edit, particle_file)
+    for hero in ["terrorblade", "techies"]:
+        particle_file = npc_heroes["DOTAHeroes"]["npc_dota_hero_"+hero]["ParticleFile"]
+        print("{}".format(particle_file))
+        edit_particle_file(edit, particle_file)
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
