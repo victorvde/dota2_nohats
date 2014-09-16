@@ -165,7 +165,7 @@ def copy_model_always(src, dest):
     copy(src + ".dx90.vtx", dest + ".dx90.vtx")
     if exists(source_file(src + ".cloth")):
         copy(src + ".cloth", dest + ".cloth")
-    elif exists(dota_file(dest + ".cloth")):
+    else:
         print("Create empty cloth file '{}'".format(dest + ".cloth"))
         if nohats_dir:
             with open(nohats_file(dest + ".cloth"), "wb") as s:
