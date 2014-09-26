@@ -645,6 +645,9 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
 
     # hard-coded stuff
     add_replacement("terrorblade_arcana_enemy_death", None)
+    add_replacement("legion_commander_duel_arcana", None)
+    add_replacement("techies_suicide_kills_arcana", None)
+    add_replacement("techies_suicide_dud_arcana", None)
     add_replacement("teleport_start_ti4", "teleport_start")
     add_replacement("teleport_end_ti4", "teleport_end")
     add_replacement("blink_dagger_start_ti4", "blink_dagger_start")
