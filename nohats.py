@@ -54,6 +54,8 @@ def nohats():
     visuals = fix_style_models(d, visuals, defaults)
     header("Fixing hex models")
     visuals = fix_hex_models(visuals)
+    header("Fixing portrait models")
+    visuals = fix_portrait_models(visuals)
     header("Fixing sounds")
     visuals = fix_sounds(visuals)
     header("Fixing icons")
@@ -298,8 +300,8 @@ def isvisualtype(type):
 
 def assetmodifier1(visual):
     type = visual.pop("type")
-    asset = visual.pop("asset")
-    modifier = visual.pop("modifier")
+    asset = visual.pop("asset", None)
+    modifier = visual.pop("modifier", None)
     if "frequency" in visual:
         frequency = visual.pop("frequency")
         assert frequency == "1"
@@ -313,10 +315,16 @@ def assetmodifier(iterable):
         yield assetmodifier1(visual)
 
 def fix_hex_models(visuals):
-    sound_visuals, visuals = filtersplit(visuals, isvisualtype("hex_model"))
-    for asset, modifier in assetmodifier(sound_visuals):
+    hex_visuals, visuals = filtersplit(visuals, isvisualtype("hex_model"))
+    for asset, modifier in assetmodifier(hex_visuals):
         assert asset == "hex"
         copy_model("models/props_gameplay/frog.mdl", modifier)
+    return visuals
+
+def fix_portrait_models(visuals):
+    portrait_visuals, visuals = filtersplit(visuals, isvisualtype("portrait_background_model"))
+    for asset, modifier in assetmodifier(portrait_visuals):
+        copy_model("models/heroes/pedestal/pedestal_1_small.mdl", asset)
     return visuals
 
 def sound_files(sound):
