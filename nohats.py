@@ -53,7 +53,7 @@ def nohats():
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
     header("Fixing hex models")
-    visuals = fix_hex_models(visuals)
+    visuals = fix_hex_models(d, visuals)
     header("Fixing portrait models")
     visuals = fix_portrait_models(visuals)
     header("Fixing sounds")
@@ -317,11 +317,20 @@ def assetmodifier(iterable):
     for id, key, visual in iterable:
         yield assetmodifier1(visual)
 
-def fix_hex_models(visuals):
+def fix_hex_models(d, visuals):
     hex_visuals, visuals = filtersplit(visuals, isvisualtype("hex_model"))
-    for asset, modifier in assetmodifier(hex_visuals):
+    for id, k, v in hex_visuals:
+        asset, modifier = assetmodifier1(v)
         assert asset == "hex"
-        copy_model("models/props_gameplay/frog.mdl", modifier)
+        item = d["items_game"]["items"][id]
+        hero = get_hero(d, item)
+        if hero == "npc_dota_hero_lion":
+            hex_model = "models/props_gameplay/frog.mdl"
+        elif hero == "npc_dota_hero_shadow_shaman":
+            hex_model = "models/props_gameplay/chicken.mdl"
+        else:
+            assert False, "Unknown hex model for hero {} item {}".format(hero, id)
+        copy_model(hex_model, modifier)
     return visuals
 
 def fix_portrait_models(visuals):
