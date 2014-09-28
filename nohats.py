@@ -228,7 +228,10 @@ def get_visuals(d, default_ids):
 
     for k, v in d["items_game"]["asset_modifiers"]:
         for k_, v_ in v:
+            if k_.startswith("asset_modifier"):
+                k_ = k_[len("asset_modifier"):]
             if not k_.isdigit():
+                assert not isinstance(v_, KVList), "Wrong name for {} key {} but it should not be skipped".format(k, k_)
                 continue
             visuals.append((None, "asset_modifier"+k+"_"+k_, v_))
 
