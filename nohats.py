@@ -364,6 +364,8 @@ def copy_wave(src, dest):
     orig_input = wave_open(orig, "rb")
     try:
         orig_nframes = orig_input.getnframes()
+        orig_nchannels = orig_input.getnchannels()
+        orig_framerate = orig_input.getframerate()
     finally:
         orig_input.close()
 
@@ -372,10 +374,35 @@ def copy_wave(src, dest):
     try:
         nframes = input.getnframes()
         frames = input.readframes(nframes)
+        nchannels = input.getnchannels()
+        sampwidth = input.getsampwidth()
+        framerate = input.getframerate()
+
+        # TODO: fix framerate
+        if framerate != orig_framerate:
+            print("Warning: source {} has framerate {} but destination {} has framerate {}".format(src, framerate, dest, orig_framerate), file=stderr)
+
+        # fix number of channels
+        if nchannels == orig_nchannels:
+            pass
+        elif nchannels == 1 and orig_nchannels == 2:
+            # convert mono to stereo
+            new_frames = b""
+            i = 0
+            while i < len(frames):
+                new_frames += frames[i:i+sampwidth]
+                new_frames += frames[i:i+sampwidth]
+                i += sampwidth
+            assert i == len(frames)
+            assert len(new_frames) == 2 * len(frames)
+            frames = new_frames
+        else:
+            assert False, "Don't know how to convert from {} channels to {} channels".format(nchannels, orig_nchannels)
+
         # fill to original length, or at least two seconds, because of static noise
-        frames_needed = max(orig_nframes, 2 * input.getframerate())
+        frames_needed = max(orig_nframes, 2 * framerate)
         nfiller_frames = max(frames_needed - nframes, 0)
-        nfiller_bytes = nfiller_frames * input.getsampwidth() * input.getnchannels()
+        nfiller_bytes = nfiller_frames * sampwidth * nchannels
         if "_loop" in src:
             filler_frames = b""
             while len(filler_frames) < nfiller_bytes:
@@ -394,6 +421,7 @@ def copy_wave(src, dest):
         output = wave_open(dest, "wb")
         try:
             output.setparams(input.getparams())
+            output.setnchannels(orig_nchannels)
             output.writeframes(frames + filler_frames)
         finally:
             output.close()
