@@ -23,7 +23,7 @@ def dota_file(p):
     return join(dota_dir, p.lower().replace("\\", "/"))
 
 def nohats_file(p):
-    return join(nohats_dir, p)
+    return join(nohats_dir, p.replace("\\", "/"))
 
 def source_file(src):
     if nohats_dir and exists(nohats_file(src)):
