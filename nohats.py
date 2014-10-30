@@ -359,14 +359,30 @@ def copy_sound(src, dest):
 
 def copy_wave(src, dest):
     print("copy wave '{}' to '{}'".format(src, dest))
+
+    orig = source_file(dest)
+    orig_input = wave_open(orig, "rb")
+    try:
+        orig_nframes = orig_input.getnframes()
+    finally:
+        orig_input.close()
+
     src = source_file(src)
     input = wave_open(src, "rb")
     try:
-        frames_available = input.getnframes()
-        # fill to two seconds because of noise
-        frames_needed = 2 * input.getframerate()
-        empty_frame = b"\0" * input.getsampwidth() * input.getnchannels()
-        filler_frames = empty_frame * max(frames_needed - frames_available, 0)
+        nframes = input.getnframes()
+        frames = input.readframes(nframes)
+        # fill to original length, or at least two seconds, because of static noise
+        frames_needed = max(orig_nframes, 2 * input.getframerate())
+        nfiller_frames = max(frames_needed - nframes, 0)
+        nfiller_bytes = nfiller_frames * input.getsampwidth() * input.getnchannels()
+        if "_loop" in src:
+            filler_frames = b""
+            while len(filler_frames) < nfiller_bytes:
+                filler_frame += frames
+            filler_frames = filler_frames[:nfiller_bytes]
+        else:
+            filler_frames = b"\0" * nfiller_bytes
 
         if nohats_dir is None:
             return
@@ -378,7 +394,7 @@ def copy_wave(src, dest):
         output = wave_open(dest, "wb")
         try:
             output.setparams(input.getparams())
-            output.writeframes(input.readframes(frames_available) + filler_frames)
+            output.writeframes(frames + filler_frames)
         finally:
             output.close()
     finally:
