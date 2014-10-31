@@ -366,6 +366,7 @@ def copy_wave(src, dest):
         orig_nframes = orig_input.getnframes()
         orig_nchannels = orig_input.getnchannels()
         orig_framerate = orig_input.getframerate()
+        orig_sampwidth = orig_input.getsampwidth()
     finally:
         orig_input.close()
 
@@ -378,9 +379,18 @@ def copy_wave(src, dest):
         sampwidth = input.getsampwidth()
         framerate = input.getframerate()
 
-        # TODO: fix framerate
+        # convert null.wav into an empty copy of the original destination
+        if src == "sound/null.wav":
+            framerate = orig_framerate
+            sampwidth = orig_sampwidth
+            frames = b""
+            nframes = 0
+
+        # sanity
         if framerate != orig_framerate:
             print("Warning: source {} has framerate {} but destination {} has framerate {}".format(src, framerate, dest, orig_framerate), file=stderr)
+        if sampwidth != orig_sampwidth:
+            print("Warning: source {} has sampwidth {} but destination {} has sampwidth {}".format(src, sampwidth, dest, orig_sampwidth), file=stderr)
 
         # fix number of channels
         if nchannels == orig_nchannels:
@@ -396,6 +406,7 @@ def copy_wave(src, dest):
             assert i == len(frames)
             assert len(new_frames) == 2 * len(frames)
             frames = new_frames
+            nchannels = orig_nchannels
         else:
             assert False, "Don't know how to convert from {} channels to {} channels".format(nchannels, orig_nchannels)
 
@@ -409,7 +420,15 @@ def copy_wave(src, dest):
                 filler_frame += frames
             filler_frames = filler_frames[:nfiller_bytes]
         else:
-            filler_frames = b"\0" * nfiller_bytes
+            if sampwidth == 1:
+                filler_b = b"\x80"
+            else:
+                filler_b = b"\0"
+            filler_frames = filler_b * nfiller_bytes
+        frames += filler_frames
+
+        orig_frames_len = orig_nframes * orig_sampwidth * orig_nchannels
+        assert len(frames) >= orig_frames_len , "Converted {} has {} data bytes, but destination {} has {} data bytes".format(src, len(frames), dest, orig_frames_len)
 
         if nohats_dir is None:
             return
@@ -421,8 +440,10 @@ def copy_wave(src, dest):
         output = wave_open(dest_file, "wb")
         try:
             output.setparams(input.getparams())
-            output.setnchannels(orig_nchannels)
-            output.writeframes(frames + filler_frames)
+            output.setnchannels(nchannels)
+            output.setframerate(framerate)
+            output.setsampwidth(sampwidth)
+            output.writeframes(frames)
         finally:
             output.close()
     finally:
