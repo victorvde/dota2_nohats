@@ -126,8 +126,9 @@ def get_defaults(d):
                 defaults[(hero, slot)] = id
             if "visuals" in item:
                 if "additional_wearable" in item["visuals"]:
-                    additional_id, _ = find_item_by_name(d, item["visuals"]["additional_wearable"])
-                    defaults[(hero, slot + "_additional_wearable")] = additional_id
+                    (additional_id, additional_item) = find_item_by_name(d, item["visuals"]["additional_wearable"])
+                    additional_slot = get_slot(d, additional_item)
+                    defaults[(hero, additional_slot)] = additional_id
     return defaults
 
 def get_default_item(d, defaults, item):
@@ -207,11 +208,6 @@ def fix_models(d, defaults, default_ids):
             if model_player in item:
                 default_item = get_default_item(d, defaults, item)
                 fix_item_model(item, default_item, model_player)
-        if "visuals" in item:
-            if "additional_wearable" in item["visuals"]:
-                _, additional_item = find_item_by_name(d, item["visuals"]["additional_wearable"])
-                _, additional_default_item = find_item_by_name(d, default_item["visuals"]["additional_wearable"])
-                fix_item_model(additional_item, additional_default_item, "model_player")
 
 def get_visuals(d, default_ids):
     # get visual modifiers
