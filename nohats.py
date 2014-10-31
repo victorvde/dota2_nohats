@@ -322,7 +322,7 @@ def fix_hex_models(d, visuals):
     for id, k, v in hex_visuals:
         asset, modifier = assetmodifier1(v)
         assert asset == "hex"
-        item = d["items_game"]["items"][id]
+        item = get_item(d, id)
         hero = get_hero(d, item)
         if hero == "npc_dota_hero_lion":
             hex_model = "models/props_gameplay/frog.mdl"
@@ -512,7 +512,7 @@ def fix_summons(visuals, units, d, default_ids):
     # get default entity_model (tiny's tree)
     default_entity_models = {}
     for default_id in default_ids:
-        item = d["items_game"]["items"][default_id]
+        item = get_item(d, default_id)
         if "visuals" in item:
             for k, v in item["visuals"]:
                 if isvisualtype("entity_model")((default_id, k, v)):
