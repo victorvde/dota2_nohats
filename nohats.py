@@ -360,8 +360,8 @@ def copy_sound(src, dest):
 def copy_wave(src, dest):
     print("copy wave '{}' to '{}'".format(src, dest))
 
-    orig = source_file(dest)
-    orig_input = wave_open(orig, "rb")
+    orig_file = source_file(dest)
+    orig_input = wave_open(orig_file, "rb")
     try:
         orig_nframes = orig_input.getnframes()
         orig_nchannels = orig_input.getnchannels()
@@ -369,8 +369,8 @@ def copy_wave(src, dest):
     finally:
         orig_input.close()
 
-    src = source_file(src)
-    input = wave_open(src, "rb")
+    src_file = source_file(src)
+    input = wave_open(src_file, "rb")
     try:
         nframes = input.getnframes()
         frames = input.readframes(nframes)
@@ -413,12 +413,12 @@ def copy_wave(src, dest):
 
         if nohats_dir is None:
             return
-        dest = nohats_file(dest)
-        dest_dir = dirname(dest)
+        dest_file = nohats_file(dest)
+        dest_dir = dirname(dest_file)
         if not exists(dest_dir):
             makedirs(dest_dir)
 
-        output = wave_open(dest, "wb")
+        output = wave_open(dest_file, "wb")
         try:
             output.setparams(input.getparams())
             output.setnchannels(orig_nchannels)
