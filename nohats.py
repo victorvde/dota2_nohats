@@ -260,6 +260,9 @@ def filter_visuals(visuals):
         "loading_screen",
         "response_criteria",
         "custom_kill_effect",
+        "cursor_pack",
+        "buff_modifier",
+        "strange_control_point",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
@@ -721,6 +724,9 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     add_replacement("legion_commander_duel_arcana", None)
     add_replacement("techies_suicide_kills_arcana", None)
     add_replacement("techies_suicide_dud_arcana", None)
+    add_replacement("pa_arcana_gravemarker_lvl1", None)
+    add_replacement("pa_arcana_gravemarker_lvl2", None)
+    add_replacement("pa_arcana_gravemarker_lvl3", None)
     add_replacement("teleport_start_ti4", "teleport_start")
     add_replacement("teleport_end_ti4", "teleport_end")
     add_replacement("blink_dagger_start_ti4", "blink_dagger_start")
