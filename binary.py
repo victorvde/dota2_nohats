@@ -85,6 +85,9 @@ class ContainerField(BaseField):
     def __contains__(self, key):
         return key in self.field
 
+    def serialize(self):
+        return self.field.serialize()
+
 class Struct(ContainerField):
     def __init__(self, *args, **kwargs):
         self.args = args
