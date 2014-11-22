@@ -51,7 +51,7 @@ class BaseField(object):
         self.pack_data(s, self.data)
 
     def pack_data(self, s, data):
-        raise NotImplementedError
+        raise NotImplementedError(self)
 
     def full_pack(self, s):
         new_data = self.data
@@ -139,7 +139,7 @@ class Struct(ContainerField):
         return data
 
     def fields(self):
-        raise NotImplementedError
+        raise NotImplementedError(self)
 
 class Magic(BaseField):
     def __init__(self, magic):
