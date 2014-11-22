@@ -1,5 +1,5 @@
 from io import BytesIO
-from zlib import decompress
+from zlib import compress, decompress
 
 from binary import Struct, Magic, Format, ContainerField, BaseField, BaseArray, Blob
 
@@ -15,6 +15,13 @@ class ZlibField(ContainerField):
         u = u[:self.unpacked_size]
         with BytesIO(u) as s:
             self.field.unpack(s)
+
+    def pack(self, s):
+        with BytesIO() as us:
+            self.field.pack(us)
+            u = us.getvalue()
+        b = compress(u, 9)
+        s.write(b)
 
     @property
     def data(self):
@@ -41,19 +48,69 @@ class BitReadStream(object):
         while n > 0:
             if self.bits_left == 0:
                 b = self.s.read(1)
-                assert len(b) == 1, "Unexpected number of bytes {}".format(len(b))
+                assert len(b) == 1, "Unexpected number of bytes read ({})".format(len(b))
                 self.buffered_byte = b[0]
                 self.bits_left = 8
             bits_taken =  min(self.bits_left, n)
-            new_bits = (self.buffered_byte >> (self.bits_left - bits_taken)) & ((1 << bits_taken) - 1)
-            bits = (bits << bits_taken) | new_bits
             self.bits_left -= bits_taken
             n -= bits_taken
+            new_bits = (self.buffered_byte >> self.bits_left) & ((1 << bits_taken) - 1)
+            bits = (bits << bits_taken) | new_bits
         return bits
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
+class BitWriteStream(object):
+    def __init__(self, s):
+        self.s = s
+        self.bits_left = 8
+        self.buffered_byte = 0
+
+    def write_bits(self, n, bits):
+        assert bits < (1 << n), bits
+        while n > 0:
+            if self.bits_left == 0:
+                wn = self.s.write(bytes([self.buffered_byte]))
+                assert wn == 1, "Unexpected number of bytes written ({})".format(wn)
+                self.buffered_byte = 0
+                self.bits_left = 8
+            bits_taken =  min(self.bits_left, n)
+            self.bits_left -= bits_taken
+            n -= bits_taken
+            new_bits = (bits >> n)
+            self.buffered_byte |= (new_bits << self.bits_left)
+            bits &= (1 << n) - 1
+        return bits
+
+    def flush(self):
+        if self.bits_left < 8:
+            wn = self.s.write(bytes([self.buffered_byte]))
+            assert wn == 1, "Unexpected number of bytes written ({})".format(wn)
+
+    def close(self):
+        self.flush()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
 class BitStruct(Struct):
     def unpack(self, s):
-        Struct.unpack(self, BitReadStream(s))
+        with BitReadStream(s) as bs:
+            Struct.unpack(self, bs)
+
+    def pack(self, s):
+        with BitWriteStream(s) as bs:
+            Struct.pack(self, bs)
 
 class Bits(BaseField):
     def __init__(self, n):
@@ -61,6 +118,9 @@ class Bits(BaseField):
 
     def unpack_data(self, s):
         return s.read_bits(self.n)
+
+    def pack_data(self, s, data):
+        return s.write_bits(self.n, data)
 
 class SBits(BaseField):
     def __init__(self, n):
@@ -72,6 +132,14 @@ class SBits(BaseField):
         if sign == 1:
             bits = bits - (1 << (self.n - 1))
         return bits
+
+    def pack_data(self, s, bits):
+        sign = 1 if bits < 0 else 0
+        if sign == 1:
+            bits = bits + (1 << (self.n - 1))
+        s.write_bits(1, sign)
+        s.write_bits(self.n - 1, bits)
+
 
 class Rect(BitStruct):
     def fields(self):
@@ -92,6 +160,17 @@ class RecordHeader(BaseField):
             "tagcode": tagcode,
             "length": length,
         }
+
+    def pack_data(self, s, data):
+        tagcode = data["tagcode"]
+        length = data["length"]
+        if length > 62:
+            taglength = 63
+        else:
+            taglength = length
+        Format("H").pack_data(s, (tagcode << 6)  | taglength)
+        if length > 62:
+            Format("I").pack_data(s, length)
 
 class Tag(Struct):
     def fields(self):
@@ -134,4 +213,6 @@ if __name__ == "__main__":
     swf = ScaleFormSWF()
     with open("x.gfx", "rb") as s:
         swf.unpack(s)
+    with open("y.gfx", "wb") as s:
+        swf.pack(s)
     print(json.dumps(swf.serialize(), indent=4))
