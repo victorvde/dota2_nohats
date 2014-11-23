@@ -27,9 +27,8 @@ class Seek(object):
         self.s.seek(self.old_pos)
 
 class FakeWriteStream(object):
-    def __init__(self, offset, name):
+    def __init__(self, offset=0):
         self.offset = offset
-        self.name = name
 
     def seek(self, offset):
         self.offset = offset
@@ -39,6 +38,7 @@ class FakeWriteStream(object):
 
     def write(self, data):
         self.offset += len(data)
+        return len(data)
 
 class BaseField(object):
     def unpack(self, s):
@@ -57,7 +57,7 @@ class BaseField(object):
         new_data = self.data
         while True:
             old_data = new_data
-            self.pack(FakeWriteStream(s.tell(), s.name))
+            self.pack(FakeWriteStream(s.tell()))
             new_data = self.data
             if old_data == new_data:
                 break
@@ -266,6 +266,9 @@ class BaseBlob(BaseField):
 class Blob(BaseBlob):
     def __init__(self, size):
         self.size = size
+
+    def serialize(self):
+        return None
 
 class PrefixedBlob(BaseBlob):
     def __init__(self, prefix_field, *args, **kwargs):

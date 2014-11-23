@@ -821,7 +821,7 @@ def edit_particle_file(f, file):
         with open(dest, "wb") as s:
             p.full_pack(s)
     else:
-        s = FakeWriteStream(0, file)
+        s = FakeWriteStream()
         p.full_pack(s)
 
 def fix_particles(d, defaults, default_ids, visuals, units, npc_heroes):

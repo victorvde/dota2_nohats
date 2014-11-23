@@ -1,18 +1,21 @@
 from io import BytesIO
 from zlib import compress, decompress
 
-from binary import Struct, Magic, Format, ContainerField, BaseField, BaseArray, Blob
+from binary import Struct, Magic, Format, ContainerField, BaseField, BaseArray, Blob, String, FakeWriteStream
+from collections import OrderedDict
 
 class ZlibField(ContainerField):
-    def __init__(self, unpacked_size, field):
-        self.unpacked_size = unpacked_size
+    def __init__(self, unpacked_size_field, field):
+        self.unpacked_size_field = unpacked_size_field
         self.field = field
 
     def unpack(self, s):
+        self.unpacked_size_field.unpack(s)
+        unpacked_size =  self.unpacked_size_field.data
         b = s.read()
         u = decompress(b)
-        assert len(u) >= self.unpacked_size, "Incorrect decompressed size: {} instead of {}".format(len(u), self.unpacked_size)
-        u = u[:self.unpacked_size]
+        assert len(u) + 8 >= unpacked_size, "Incorrect decompressed size: {} instead of {}".format(len(u), unpacked_size)
+        u = u[:unpacked_size]
         with BytesIO(u) as s:
             self.field.unpack(s)
 
@@ -20,6 +23,7 @@ class ZlibField(ContainerField):
         with BytesIO() as us:
             self.field.pack(us)
             u = us.getvalue()
+        self.unpacked_size_field.pack_data(s, len(u) + 8)
         b = compress(u, 9)
         s.write(b)
 
@@ -127,6 +131,8 @@ class SBits(BaseField):
         self.n = n
 
     def unpack_data(self, s):
+        if self.n == 0:
+            return 0
         sign = s.read_bits(1)
         bits = s.read_bits(self.n - 1)
         if sign == 1:
@@ -134,6 +140,9 @@ class SBits(BaseField):
         return bits
 
     def pack_data(self, s, bits):
+        if self.n == 0:
+            assert bits == 0, bits
+            return
         sign = 1 if bits < 0 else 0
         if sign == 1:
             bits = bits + (1 << (self.n - 1))
@@ -156,10 +165,10 @@ class RecordHeader(BaseField):
         length = (data & ((1 << 6) -1))
         if length == 63:
             length = Format("I").unpack_data(s)
-        return {
-            "tagcode": tagcode,
-            "length": length,
-        }
+        return OrderedDict([
+            ("tagcode", tagcode),
+            ("length", length),
+            ])
 
     def pack_data(self, s, data):
         tagcode = data["tagcode"]
@@ -172,13 +181,88 @@ class RecordHeader(BaseField):
         if length > 62:
             Format("I").pack_data(s, length)
 
+class PlaceObject2Flags(BitStruct):
+    def fields(self):
+        self.F("clip_actions", Bits(1))
+        self.F("clip_depth", Bits(1))
+        self.F("name", Bits(1))
+        self.F("ratio", Bits(1))
+        self.F("color_transform", Bits(1))
+        self.F("matrix", Bits(1))
+        self.F("character", Bits(1))
+        self.F("move", Bits(1))
+
+class Matrix(BitStruct):
+    def fields(self):
+        self.F("has_scale", Bits(1))
+        if self["has_scale"].data == 1:
+            self.F("nscalebits", Bits(5))
+            self.F("scalex", SBits(self["nscalebits"].data))
+            self.F("scaley", SBits(self["nscalebits"].data))
+        self.F("has_rotate", Bits(1))
+        if self["has_rotate"].data == 1:
+            self.F("nrotatebits", Bits(5))
+            self.F("rotateskew0", SBits(self["nrotatebits"].data))
+            self.F("rotateskew1", SBits(self["nrotatebits"].data))
+        self.F("ntranslatebits", Bits(5))
+        self.F("translatex", SBits(self["ntranslatebits"].data))
+        self.F("translatey", SBits(self["ntranslatebits"].data))
+
+class CXFormWithAlpha(BitStruct):
+    def fields(self):
+        self.F("has_addterms", Bits(1))
+        self.F("has_multterms", Bits(1))
+        self.F("numbits", Bits(4))
+        if self["has_multterms"].data == 1:
+            self.F("redmultterm", SBits(self["numbits"].data))
+            self.F("greenmultterm", SBits(self["numbits"].data))
+            self.F("bluemultterm", SBits(self["numbits"].data))
+            self.F("alphamultterm", SBits(self["numbits"].data))
+        if self["has_addterms"].data == 1:
+            self.F("redaddterm", SBits(self["numbits"].data))
+            self.F("greenaddterm", SBits(self["numbits"].data))
+            self.F("blueaddterm", SBits(self["numbits"].data))
+            self.F("alphaaddterm", SBits(self["numbits"].data))
+
+class DefineSprite(Struct):
+    def fields(self):
+        self.F("sprite_id", Format("H"))
+        self.F("frame_count", Format("H"))
+        self.F("tags", TagArray())
+
+class PlaceObject2(Struct):
+    def fields(self):
+        f = self.F("flags", PlaceObject2Flags())
+        self.F("depth", Format("H"))
+        if f["character"].data == 1:
+            self.F("character", Format("H"))
+        if f["matrix"].data == 1:
+            self.F("matrix", Matrix())
+        if f["color_transform"].data == 1:
+            self.F("color_transform", CXFormWithAlpha())
+        if f["ratio"].data == 1:
+            self.F("ratio", Format("H"))
+        if f["name"].data == 1:
+            self.F("name", String())
+        if f["clip_depth"].data == 1:
+            self.F("clip_depth", Format("H"))
+        assert f["clip_actions"].data == 0
+
 class Tag(Struct):
     def fields(self):
         h = self.F("header", RecordHeader())
-        self.F("blob", Blob(h.data["length"]))
+        if h.data["tagcode"] == 39:
+            self.F("content", DefineSprite())
+        elif h.data["tagcode"] == 26:
+            self.F("content", PlaceObject2())
+        else:
+            self.F("content", Blob(h.data["length"]))
 
-    def serialize(self):
-        return {"header": self["header"].serialize()}
+    def pack(self, s):
+        fs = FakeWriteStream()
+        self["content"].pack(fs)
+        self["header"].data["length"] = fs.tell()
+        Struct.pack(self, s)
 
 class TagArray(BaseArray):
     def __init__(self):
@@ -205,14 +289,35 @@ class SWFContent(Struct):
 class ScaleFormSWF(Struct):
     def fields(self):
         self.F("magic", Magic(b"CFX\x0a"))
-        l = self.F("length", Format("I"))
-        self.F("tags", ZlibField(l.data, SWFContent()))
+        self.F("content", ZlibField(Format("I"), SWFContent()))
 
 if __name__ == "__main__":
     import json
     swf = ScaleFormSWF()
     with open("x.gfx", "rb") as s:
         swf.unpack(s)
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 39:
+            depths_to_fix = []
+            for subtag in tag["content"]["tags"]:
+                if subtag["header"].data["tagcode"] == 26:
+                    content = subtag["content"]
+                    if content["flags"]["name"].data == 1:
+                        name = content["name"].data
+                        if name in ["predictionsButton", "predictionsTooltip"]:
+                            depths_to_fix.append(content["depth"].data)
+                            print("added", content["depth"].data)
+                    if content["depth"].data in depths_to_fix:
+                        print("found", content["depth"].data)
+                        m = Matrix()
+                        m.data = {
+                            "has_scale": 0,
+                            "has_rotate": 0,
+                            "ntranslatebits": 21,
+                            "translatex": 1000000,
+                            "translatey": 1000000,
+                        }
+                        content["matrix"] = m
     with open("y.gfx", "wb") as s:
-        swf.pack(s)
-    print(json.dumps(swf.serialize(), indent=4))
+        swf.full_pack(s)
+#   print(json.dumps(swf.serialize(), indent=4))
