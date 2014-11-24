@@ -9,12 +9,14 @@ from os import makedirs, listdir, walk, name as os_name
 from kvlist import KVList
 from mdl import MDL
 from pcf import PCF
+from swf import ScaleFormSWF, Matrix
 from wave import open as wave_open
 from collections import OrderedDict
 from io import StringIO
 from itertools import chain
 from binary import FakeWriteStream
 from random import randint, seed
+from re import subn
 
 def header(s):
     print("== {} ==".format(s))
@@ -47,6 +49,9 @@ def nohats():
     units = get_units()
     header("Loading npc_heroes.txt")
     npc_heroes = get_npc_heroes()
+
+    header("Fixing scaleform files")
+    fix_scaleform()
 
     header("Fixing simple model files")
     fix_models(d, defaults, default_ids)
@@ -951,6 +956,125 @@ def fix_particle_color(npc_heroes):
         particle_file = npc_heroes["DOTAHeroes"]["npc_dota_hero_"+hero]["ParticleFile"]
         print("{}".format(particle_file))
         edit_particle_file(edit, particle_file)
+
+def fix_scaleform():
+    if nohats_dir:
+        makedirs(nohats_file("resource/flash3"))
+    fix_scaleform_play()
+    fix_scaleform_play_matchmaking_status()
+    fix_scaleform_shared_heroselectorandloadout()
+    fix_scaleform_actionpanel()
+
+def find_methodbody(abcfile, instancename, methodname):
+    for instance in abcfile["instance"]:
+        if instance["name"].data["name"] == instancename:
+            for trait in instance["trait"]:
+                if trait["name"].data["name"] == methodname:
+                    assert trait["kind"].data == 1
+                    method_id = trait["method"].data
+                    break
+            else:
+                assert False, "Can't find method {}".format(methodname)
+            break
+    else:
+        assert False, "Can't find instance {}".format(instancename)
+    for methodbody in abcfile["methodbody"]:
+        if methodbody["method"].data == method_id:
+            body = methodbody
+            break
+    else:
+        assert False, "Can't find method body"
+    return body
+
+def edit_methodbody(abcfile, instancename, methodname, orig, edit, **kwargs):
+    body = find_methodbody(abcfile, instancename, methodname)
+    new_code, n = subn(orig, edit, body["code"].data, **kwargs)
+    assert n == 1, n
+    assert len(new_code) == len(body["code"].data)
+    body["code"].data = new_code
+
+def fix_scaleform_play():
+    filename = "resource/flash3/play.gfx"
+    print(filename)
+    swf = ScaleFormSWF()
+    with open(dota_file(filename), "rb") as s:
+        swf.unpack(s)
+
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 82:
+            abcfile = tag["content"]["abcdata"]
+            edit_methodbody(abcfile, "MainTimeline", "BeginSetupAdvertisements", rb"\xd1", b"\x27")
+            edit_methodbody(abcfile, "MainTimeline", "updateAdPicker", rb"\x62\x04\xd1\xad", b"\x02\x02\x02\x27")
+
+    if nohats_dir:
+        with open(nohats_file(filename), "wb") as s:
+            swf.pack(s)
+
+def fix_scaleform_play_matchmaking_status():
+    filename = "resource/flash3/play_matchmaking_status.gfx"
+    print(filename)
+    swf = ScaleFormSWF()
+    with open(dota_file(filename), "rb") as s:
+        swf.unpack(s)
+
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 82:
+            abcfile = tag["content"]["abcdata"]
+            edit_methodbody(abcfile, "MainTimeline", "setChromeBrowserVisible", rb"\xd1", b"\x27")
+
+    if nohats_dir:
+        with open(nohats_file(filename), "wb") as s:
+            swf.pack(s)
+
+def fix_scaleform_shared_heroselectorandloadout():
+    filename = "resource/flash3/shared_heroselectorandloadout.gfx"
+    print(filename)
+    swf = ScaleFormSWF()
+    with open(dota_file(filename), "rb") as s:
+        swf.unpack(s)
+
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 82:
+            abcfile = tag["content"]["abcdata"]
+            edit_methodbody(abcfile, "MainTimeline", "setSuggestedItems", rb"\x26", b"\x27", count=1)
+
+    if nohats_dir:
+        with open(nohats_file(filename), "wb") as s:
+            swf.pack(s)
+
+def fix_scaleform_actionpanel():
+    filename = "resource/flash3/actionpanel.gfx"
+    print(filename)
+    swf = ScaleFormSWF()
+    with open(dota_file(filename), "rb") as s:
+        swf.unpack(s)
+
+    found = False
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 39:
+            depths_to_fix = []
+            for subtag in tag["content"]["tags"]:
+                if subtag["header"].data["tagcode"] == 26:
+                    content = subtag["content"]
+                    if content["flags"]["name"].data == 1:
+                        name = content["name"].data
+                        if name in ["predictionsButton", "predictionsTooltip"]:
+                            depths_to_fix.append(content["depth"].data)
+                            found = True
+                    if content["depth"].data in depths_to_fix:
+                        m = Matrix()
+                        m.data = {
+                            "has_scale": 0,
+                            "has_rotate": 0,
+                            "ntranslatebits": 21,
+                            "translatex": 1000000,
+                            "translatey": 1000000,
+                        }
+                        content["matrix"] = m
+    assert found
+
+    with open(nohats_file(filename), "wb") as s:
+        swf.pack(s)
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])

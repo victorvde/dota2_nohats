@@ -224,8 +224,8 @@ class Exception(Struct):
         self.F("from", U30())
         self.F("to", U30())
         self.F("target", U30())
-        self.F("exc_type", ConstIndex(const["string"]))
-        self.F("var_name", ConstIndex(const["string"]))
+        self.F("exc_type", U30())
+        self.F("var_name", U30())
 
 class MethodBody(Struct):
     def fields(self, const):

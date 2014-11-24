@@ -299,19 +299,3 @@ class ScaleFormSWF(Struct):
     def fields(self):
         self.F("magic", Magic(b"CFX\x0a"))
         self.F("content", ZlibField(Format("I"), SWFContent()))
-
-if __name__ == "__main__":
-    import json
-
-    swf = ScaleFormSWF()
-    with open("x.gfx", "rb") as s:
-        swf.unpack(s)
-
-    for tag in swf["content"]["tags"]:
-        if tag["header"].data["tagcode"] == 82:
-            pass
-
-    with open("y.gfx", "wb") as s:
-        swf.pack(s)
-
-    print(json.dumps(swf.serialize(), indent=4))
