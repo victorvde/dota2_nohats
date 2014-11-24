@@ -3,6 +3,7 @@ from zlib import compress, decompress
 
 from binary import Struct, Magic, Format, ContainerField, BaseField, BaseArray, Blob, String, FakeWriteStream
 from collections import OrderedDict
+from swf_abc import ABCFile
 
 class ZlibField(ContainerField):
     def __init__(self, unpacked_size_field, field):
@@ -248,6 +249,12 @@ class PlaceObject2(Struct):
             self.F("clip_depth", Format("H"))
         assert f["clip_actions"].data == 0
 
+class DoABC(Struct):
+    def fields(self):
+        self.F("flags", Format("I"))
+        self.F("name", String())
+        self.F("abcdata", ABCFile())
+
 class Tag(Struct):
     def fields(self):
         h = self.F("header", RecordHeader())
@@ -255,6 +262,8 @@ class Tag(Struct):
             self.F("content", DefineSprite())
         elif h.data["tagcode"] == 26:
             self.F("content", PlaceObject2())
+        elif h.data["tagcode"] == 82:
+            self.F("content", DoABC())
         else:
             self.F("content", Blob(h.data["length"]))
 
@@ -293,31 +302,16 @@ class ScaleFormSWF(Struct):
 
 if __name__ == "__main__":
     import json
+
     swf = ScaleFormSWF()
     with open("x.gfx", "rb") as s:
         swf.unpack(s)
+
     for tag in swf["content"]["tags"]:
-        if tag["header"].data["tagcode"] == 39:
-            depths_to_fix = []
-            for subtag in tag["content"]["tags"]:
-                if subtag["header"].data["tagcode"] == 26:
-                    content = subtag["content"]
-                    if content["flags"]["name"].data == 1:
-                        name = content["name"].data
-                        if name in ["predictionsButton", "predictionsTooltip"]:
-                            depths_to_fix.append(content["depth"].data)
-                            print("added", content["depth"].data)
-                    if content["depth"].data in depths_to_fix:
-                        print("found", content["depth"].data)
-                        m = Matrix()
-                        m.data = {
-                            "has_scale": 0,
-                            "has_rotate": 0,
-                            "ntranslatebits": 21,
-                            "translatex": 1000000,
-                            "translatey": 1000000,
-                        }
-                        content["matrix"] = m
+        if tag["header"].data["tagcode"] == 82:
+            pass
+
     with open("y.gfx", "wb") as s:
-        swf.full_pack(s)
-#   print(json.dumps(swf.serialize(), indent=4))
+        swf.pack(s)
+
+    print(json.dumps(swf.serialize(), indent=4))
