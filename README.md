@@ -1,7 +1,7 @@
 # General
 ## What is this?
 Dota 2 nohats is a modification for Valve's Dota 2.
-Installing this mod overrides cosmetic files with default files.
+Installing this mod overrides cosmetic files with default files and removes in-game ads.
 Effectively it seems like nobody has cosmetics equipped.
 The page for this mod is <https://dota2nohats.neocities.org/>.
 
@@ -44,7 +44,7 @@ The command to create it is:
 
     python3 nohats.py ../dota_unpacked dota2_nohats > nohats_log.txt 2> nohats_warnings.txt
 
-This command has been tested with Python 3.3.3 on Linux.
+This command has been tested with Python 3.4.2 on Linux.
 
 ## Which kinds of cosmetics are overridden where?
 
@@ -57,6 +57,9 @@ Then cosmetic effects are overridden, including:
 * Particles (*.pcf)
 * Animations except taunts (hero *.mdl)
 * Skins (hero *.mdl)
+
+Also in-game ads are removed:
+* Scaleform GFx (*.gfx)
 
 Cosmetics that don't affect others are not overridden, including:
 * HUDs
