@@ -963,7 +963,6 @@ def fix_scaleform():
     fix_scaleform_play()
     fix_scaleform_play_matchmaking_status()
     fix_scaleform_shared_heroselectorandloadout()
-    fix_scaleform_actionpanel()
 
 def find_methodbody(abcfile, instancename, methodname):
     for instance in abcfile["instance"]:
@@ -1041,40 +1040,6 @@ def fix_scaleform_shared_heroselectorandloadout():
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
             swf.pack(s)
-
-def fix_scaleform_actionpanel():
-    filename = "resource/flash3/actionpanel.gfx"
-    print(filename)
-    swf = ScaleFormSWF()
-    with open(dota_file(filename), "rb") as s:
-        swf.unpack(s)
-
-    found = False
-    for tag in swf["content"]["tags"]:
-        if tag["header"].data["tagcode"] == 39:
-            depths_to_fix = []
-            for subtag in tag["content"]["tags"]:
-                if subtag["header"].data["tagcode"] == 26:
-                    content = subtag["content"]
-                    if content["flags"]["name"].data == 1:
-                        name = content["name"].data
-                        if name in ["predictionsButton", "predictionsTooltip"]:
-                            depths_to_fix.append(content["depth"].data)
-                            found = True
-                    if content["depth"].data in depths_to_fix:
-                        m = Matrix()
-                        m.data = {
-                            "has_scale": 0,
-                            "has_rotate": 0,
-                            "ntranslatebits": 21,
-                            "translatex": 1000000,
-                            "translatey": 1000000,
-                        }
-                        content["matrix"] = m
-    assert found
-
-    with open(nohats_file(filename), "wb") as s:
-        swf.pack(s)
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
