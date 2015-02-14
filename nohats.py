@@ -584,9 +584,19 @@ def fix_base_models(visuals, heroes):
                 s.write(b"ACT_DOTA_ATTACK2\0")
                 while s.tell() % 4 != 0:
                     s.write(b"\0")
+                total_size = s.tell()
+
                 sequence["activitynameindex"].data = [o, "ACT_DOTA_ATTACK2"]
                 s.seek(sequence["base"].data)
                 sequence.pack(s)
+
+                m["datalength"].data = total_size
+                s.seek(0)
+                m.pack(s)
+
+            with open(f, "rb") as s:
+                m.unpack(s)
+
     return visuals
 
 def fix_hero_forms(visuals):
