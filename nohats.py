@@ -75,10 +75,10 @@ def nohats():
     visuals = fix_hero_forms(visuals)
     header("Fixing particle snapshots")
     visuals = fix_particle_snapshots(visuals)
-    header("Fixing alternate base models")
-    visuals = fix_base_models(visuals, npc_heroes)
     header("Fixing animations")
     visuals = fix_animations(d, visuals, npc_heroes)
+    header("Fixing alternate base models")
+    visuals = fix_base_models(visuals, npc_heroes)
     header("Fixing skins")
     courier_model = units["DOTAUnits"]["npc_dota_courier"]["Model"]
     flying_courier_model = units["DOTAUnits"]["npc_dota_flying_courier"]["Model"]
