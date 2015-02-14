@@ -315,9 +315,12 @@ def assetmodifier1(visual):
     modifier = visual.pop("modifier", None)
     if "frequency" in visual:
         frequency = visual.pop("frequency")
-        assert frequency == "1"
+        assert frequency == "1", frequency
     if "style" in visual:
         style = visual.pop("style")
+    if "force_display" in visual:
+        force_display = visual.pop("force_display")
+        assert force_display == "1", force_display
     assert len(visual) == 0, list(visual.keys())
     return (asset, modifier)
 
