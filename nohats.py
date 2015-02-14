@@ -594,9 +594,6 @@ def fix_base_models(visuals, heroes):
                 s.seek(0)
                 m.pack(s)
 
-            with open(f, "rb") as s:
-                m.unpack(s)
-
     return visuals
 
 def fix_hero_forms(visuals):
