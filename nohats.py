@@ -3,6 +3,7 @@
 
 from vdf import load, dump
 from os.path import abspath, exists, dirname, join
+from os import SEEK_END
 from sys import argv, stdout, stderr, version
 from shutil import copyfile
 from os import makedirs, listdir, walk, name as os_name
@@ -59,6 +60,8 @@ def nohats():
     visuals = fix_style_models(d, visuals, defaults)
     header("Fixing hex models")
     visuals = fix_hex_models(d, visuals)
+    header("Fixing pet models")
+    visuals = fix_pet_models(visuals)
     header("Fixing portrait models")
     visuals = fix_portrait_models(visuals)
     header("Fixing sounds")
@@ -268,6 +271,7 @@ def filter_visuals(visuals):
         "cursor_pack",
         "buff_modifier",
         "strange_control_point",
+        "healthbar_offset",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
@@ -335,6 +339,12 @@ def fix_hex_models(d, visuals):
         else:
             assert False, "Unknown hex model for hero {} item {}".format(hero, id)
         copy_model(hex_model, modifier)
+    return visuals
+
+def fix_pet_models(visuals):
+    pet_visuals, visuals = filtersplit(visuals, isvisualtype("pet"))
+    for asset, modifier in assetmodifier(pet_visuals):
+        copy_model("models/development/invisiblebox.mdl", asset)
     return visuals
 
 def fix_portrait_models(visuals):
@@ -552,7 +562,28 @@ def fix_base_models(visuals, heroes):
     for asset, modifier in assetmodifier(entity_model_visuals):
         asset_model = heroes["DOTAHeroes"][asset]["Model"]
         copy_model(asset_model, modifier)
-
+        # special case to fix mismatched activities
+        if modifier == "models/heroes/crystal_maiden/crystal_maiden_arcana.mdl":
+            print("Applying activity fix to crystal_maiden_arcana.mdl")
+            f = nohats_file(modifier)
+            m = MDL()
+            with open(f, "rb") as s:
+                m.unpack(s)
+            for seq in m["localsequence"]:
+                if seq["labelindex"].data[1] == "cm_attack2" and seq["activitynameindex"].data[1] == "ACT_DOTA_ATTACK" and len(seq["activitymodifier"]) == 0:
+                    sequence = seq
+                    break
+            else:
+                assert False, "Can't find sequence to edit"
+            with open(f, "r+b") as s:
+                s.seek(0, SEEK_END)
+                o = s.tell()
+                s.write(b"ACT_DOTA_ATTACK2\0")
+                while s.tell() % 4 != 0:
+                    s.write(b"\0")
+                sequence["activitynameindex"].data = [o, "ACT_DOTA_ATTACK2"]
+                s.seek(sequence["base"].data)
+                sequence.pack(s)
     return visuals
 
 def fix_hero_forms(visuals):

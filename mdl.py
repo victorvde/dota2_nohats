@@ -104,8 +104,7 @@ class BasePointer(Format):
         return data
 
     def pack(self, s):
-        this = s.tell()
-        self.data = s
+        self.data = -s.tell()
         Format.pack(self, s)
 
 class Relative(Format):
@@ -121,7 +120,7 @@ class Relative(Format):
 
     def pack_data(self, s, data):
         if data != 0:
-            data += self.field.data
+            data -= self.field.data
         Format.pack_data(self, s, data)
 
 class RelativeString(Relative):
