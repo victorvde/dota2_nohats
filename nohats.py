@@ -644,12 +644,12 @@ def get_npc_heroes():
 def fix_animations(d, visuals, npc_heroes):
     ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT"]
 
-    item_activities = set()
+    item_activity_modifiers = set()
 
     activity_visuals, visuals = filtersplit(visuals, isvisualtype("activity"))
     for id, key, visual in activity_visuals:
         asset, modifier = assetmodifier1(visual)
-        item_activities.add(modifier)
+        item_activity_modifiers.add(modifier)
 
     for k, v in npc_heroes["DOTAHeroes"]:
         if k == "Version":
@@ -658,34 +658,45 @@ def fix_animations(d, visuals, npc_heroes):
         if not exists(source_file(model)):
             continue
 
-        mung_offsets = set()
-        mung_sequence_names = set()
         model_parsed = MDL()
         with open(source_file(model), "rb") as s:
             model_parsed.unpack(s)
-        for sequence in model_parsed.data["localsequence"]:
-            if sequence["activitynameindex"][1] in ignored:
-                continue
-            for activitymodifier in sequence["activitymodifier"]:
-                if activitymodifier["szindex"][1] in item_activities:
-                    mung_offsets.add(activitymodifier["szindex"][0])
-                    mung_sequence_names.add(sequence["labelindex"][1])
 
-        if not mung_offsets:
-            continue
+        sequence_dict = {}
+        for sequence in model_parsed["localsequence"]:
+            assert sequence["unused"].data == (0, 0, 0, 0, 0), sequence["unused"].data
+            activity_name = sequence["activitynameindex"].data[1]
+            activity_modifiers = frozenset(am["szindex"].data[1] for am in sequence["activitymodifier"])
+            sequence_dict.setdefault((activity_name, activity_modifiers), sequence)
 
-        copy_model_always(model, model)
-        for mung_sequence_name in sorted(list(mung_sequence_names)):
-            print("Munging sequence '{}'".format(mung_sequence_name))
-        if nohats_dir is None:
-            continue
-        with open(nohats_file(model), "r+b") as s:
-            for offset in mung_offsets:
-                s.seek(offset)
-                assert s.read(1) not in [b"X", b""]
-                s.seek(offset)
-                s.write(b"X")
-
+        copied = False
+        for (activity_name, activity_modifiers), sequence in sequence_dict.items():
+            if activity_name not in ignored and activity_modifiers & item_activity_modifiers:
+                if not copied:
+                    copy_model_always(model, model)
+                    copied = True
+                orig_activity_modifiers = activity_modifiers - item_activity_modifiers
+                orig_seq = sequence_dict.get((activity_name, orig_activity_modifiers))
+                if orig_seq is None:
+                    orig_seq = sequence_dict.get((activity_name, frozenset()))
+                idle_acts = ["ACT_DOTA_IDLE_RARE", "ACT_DOTA_VICTORY", "ACT_DOTA_TELEPORT", "ACT_DOTA_TELEPORT_END", "ACT_DOTA_SPAWN", "ACT_DOTA_KILLTAUNT"]
+                if orig_seq is None and activity_name in idle_acts:
+                    orig_seq = sequence_dict.get(("ACT_DOTA_IDLE", orig_activity_modifiers))
+                if orig_seq is None and activity_name in ["ACT_DOTA_MOMENT_OF_COURAGE"]:
+                    orig_seq = sequence_dict.get(("ACT_DOTA_CAST_ABILITY_3", orig_activity_modifiers))
+                if orig_seq is None and activity_name in ["ACT_DOTA_ATTACK_PARTICLE"]:
+                    orig_seq = sequence_dict.get(("ACT_DOTA_ATTACK", orig_activity_modifiers))
+                assert orig_seq is not None, (activity_name, orig_activity_modifiers)
+                print("Replace sequence {} with {}".format(sequence["labelindex"].data[1], orig_seq and orig_seq["labelindex"].data[1]))
+                if nohats_dir is None:
+                    continue
+                with open(nohats_file(model), "r+b") as s:
+                    orig_seq["labelindex"].data = sequence["labelindex"].data
+                    orig_seq["activitynameindex"].data = sequence["activitynameindex"].data
+                    orig_seq["numactivitymodifier"].data = sequence["numactivitymodifier"].data
+                    orig_seq["activitymodifierindex"].data = sequence["activitymodifierindex"].data
+                    s.seek(sequence["base"].data)
+                    orig_seq.pack(s)
     return visuals
 
 def get_particlesystems(item):
