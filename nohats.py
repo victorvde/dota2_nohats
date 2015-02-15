@@ -22,11 +22,14 @@ from re import subn
 def header(s):
     print("== {} ==".format(s))
 
+def canonical_file(p):
+    return p.lower().replace("\\", "/")
+
 def dota_file(p):
-    return join(dota_dir, p.lower().replace("\\", "/"))
+    return join(dota_dir, canonical_file(p))
 
 def nohats_file(p):
-    return join(nohats_dir, p.replace("\\", "/"))
+    return join(nohats_dir, canonical_file(p))
 
 def source_file(src):
     if nohats_dir and exists(nohats_file(src)):
