@@ -1,74 +1,20 @@
-from binary import Struct, Magic, Format, BaseArray, String, Blob
-from itertools import count
+from vpklib import VPK
 
-class VPK(Struct):
-    def fields(self):
-        self.F("magic", Magic(b"\x34\x12\xaa\x55"))
-        self.F("version", Format("I"))
-        assert self["version"].data == 1
-        self.F("index_size", Format("I"))
-        self.F("index", NulTerminatedArray(FileType))
+from collections import OrderedDict
+from json import dumps
+from os import walk
+from os.path import relpath, join
+from sys import argv
+from zlib import crc32
 
-    def should_serialize(self, k, f):
-        return k != "magic"
-
-class NulTerminatedArray(BaseArray):
-    def unpack(self, s):
-        self.field = []
-        for i in count():
-            f = self.field_fun(i, self)
-            try:
-                f.unpack(s)
-            except StopIteration:
-                break
-            else:
-                self.field.append(f)
-
-    def pack(self, s):
-        BaseArray.pack(self, s)
-        s.write(b"\x00")
-
-class FileType(Struct):
-    def fields(self):
-        t = self.F("type", String())
-        if t.data == "":
-            raise StopIteration
-        self.F("directory", NulTerminatedArray(Directory))
-
-class Directory(Struct):
-    def fields(self):
-        p = self.F("path", String())
-        if p.data == "":
-            raise StopIteration
-        self.F("file", NulTerminatedArray(File))
-
-class File(Struct):
-    def fields(self):
-        f = self.F("filename", String())
-        if f.data == "":
-            raise StopIteration
-        self.F("crc", Format("I"))
-        ps = self.F("preloadsize", Format("H"))
-        self.F("archive_index", Format("H"))
-        self.F("archive_offset", Format("I"))
-        self.F("archive_size", Format("I"))
-        self.F("terminator", Magic(b"\xFF\xFF"))
-        self.F("preload_data", Blob(ps.data))
-
-    def should_serialize(self, k, f):
-        return k not in ["terminator", "preload_data"]
-
-if __name__ == "__main__":
-    from sys import argv
-    from json import dumps
-    from zlib import crc32
-
-    assert argv[1].endswith("_dir.vpk")
-    prefix = argv[1][0:-len("_dir.vpk")]
+def test_vpk(f):
+    assert f.endswith("_dir.vpk")
+    prefix = f[0:-len("_dir.vpk")]
 
     v = VPK()
     with open(prefix+"_dir.vpk", "rb") as s:
         v.unpack(s)
+
     for ft in v["index"]:
         for p in ft["directory"]:
             for f in p["file"]:
@@ -89,4 +35,88 @@ if __name__ == "__main__":
                 my_crc = crc32(d) & 0xFFFFFFFF
                 print("CRC {} = {}, {}".format(my_crc, f["crc"].data, my_crc == f["crc"].data))
 
-    print(dumps(v.serialize(), indent=4))
+def canonical_file(p):
+    return p.lower().replace("\\", "/")
+
+def create_vpk(prefix, pack_dir):
+    filelist = []
+    for (p, ds, fs) in walk(pack_dir):
+        rel_p = canonical_file(relpath(p, pack_dir))
+        for f in fs:
+            filelist.append((rel_p, canonical_file(f)))
+
+    file_types = OrderedDict()
+    crc_index = {}
+    i = 0
+    max_o = 2**20 * 100
+    archive_file = "{}_{:03}.vpk".format(prefix, i)
+    s = open(archive_file, "wb")
+    try:
+        for p, f in filelist:
+            o = s.tell()
+            if o > max_o:
+                s.close()
+                i += 1
+                archive_file = "{}_{:03}.vpk".format(prefix, i)
+                s = open(archive_file, "wb")
+                o = 0
+
+            with open(join(pack_dir, p, f), "rb") as t:
+                d = t.read()
+            size = len(d)
+            crc = crc32(d)
+            name, extension = f.rsplit(".", 1)
+            if (crc, size) in crc_index:
+                # TODO: actually check equality in case of CRC+size collisions!
+                our_i, our_o = crc_index[(crc, size)]
+            else:
+                crc_index[(crc, size)] = (i, o)
+                s.write(d)
+                our_i = i
+                our_o = o
+            file_types.setdefault(extension, OrderedDict()).setdefault(p, []).append((name, our_i, our_o, size, crc))
+    finally:
+        s.close()
+
+    types = []
+    for t, ds in file_types.items():
+        dirs = []
+        for d, fs in ds.items():
+            files = []
+            for (name, i, o, size, crc) in fs:
+                files.append({
+                    "filename": name,
+                    "crc": crc,
+                    "preloadsize": 0,
+                    "archive_index": i,
+                    "archive_offset": o,
+                    "archive_size": size,
+                    "preload_data": b"",
+                    })
+            dirs.append({
+                "path": d,
+                "file": files,
+                })
+        types.append({
+            "type": t,
+            "directory": dirs,
+            })
+    v = VPK()
+    v.data = {
+        "version": 1,
+        "index_size": 0,
+        "index": types,
+        }
+    with open("{}_dir.vpk".format(prefix), "wb") as s:
+        v.pack(s)
+
+if __name__ == "__main__":
+    if argv[1] == "t": # test
+        test_vpk(argv[2])
+    elif argv[1] == "j": # json
+        v = VPK()
+        with open(argv[2], "rb") as s:
+            v.unpack(s)
+        print(dumps(v.serialize(), indent=4))
+    elif argv[1] == "a": # create a vpk file
+        create_vpk(argv[2], argv[3])
