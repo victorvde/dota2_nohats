@@ -135,8 +135,12 @@ class Struct(ContainerField):
     def serialize(self):
         data = OrderedDict()
         for k, v in self.field.items():
-            data[k] = v.serialize()
+            if self.should_serialize(k, v):
+                data[k] = v.serialize()
         return data
+
+    def should_serialize(self, k, v):
+        return True
 
     def fields(self):
         raise NotImplementedError(self)
