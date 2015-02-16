@@ -1,6 +1,8 @@
 *.pyc
 *.pcf
 *.txt
+!gameinfo.txt
+*.json
 *.mdl
 *.exe
 Include

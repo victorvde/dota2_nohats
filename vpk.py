@@ -120,3 +120,5 @@ if __name__ == "__main__":
         print(dumps(v.serialize(), indent=4))
     elif argv[1] == "a": # create a vpk file
         create_vpk(argv[2], argv[3])
+    else:
+        assert False, "wrong command line options"
