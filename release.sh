@@ -7,9 +7,20 @@ set -x
 
 rm -r dota2_nohats || true
 rm dota2_nohats.7z || true
+rm -r nohats || true
+rm -r dota || true
+
 fusermount -u ~/dota_unpacked || true
 ~/unvpk/build/vpkfs/vpkfs "/mnt/steam/steamapps/common/dota 2 beta/dota/pak01_dir.vpk" ~/dota_unpacked
 # ~/unvpk/build/vpkfs/vpkfs "/mnt/steam/steamapps/common/dota 2 test/dota/pak01_dir.vpk" ~/dota_unpacked
 python3 -u nohats.py ~/dota_unpacked dota2_nohats "$@" > nohats_log.txt 2> nohats_warnings.txt
+
 unix2dos -n README.md readme.txt
-7z a -mx -bd dota2_nohats.7z dota2_nohats nohats_log.txt nohats_warnings.txt readme.txt > /dev/null
+
+mkdir nohats
+python3 vpk.py a nohats/pak01 dota2_nohats/
+
+mkdir dota
+cp gameinfo.txt dota/gameinfo.txt
+
+7z a -mx -ms=off dota2_nohats.7z nohats dota nohats_log.txt nohats_warnings.txt readme.txt > /dev/null
