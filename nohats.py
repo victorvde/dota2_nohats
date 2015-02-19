@@ -662,7 +662,7 @@ def fix_animations(d, visuals, npc_heroes):
         with open(source_file(model), "rb") as s:
             model_parsed.unpack(s)
 
-        sequence_dict = {}
+        sequence_dict = OrderedDict()
         for sequence in model_parsed["localsequence"]:
             assert sequence["unused"].data == (0, 0, 0, 0, 0), sequence["unused"].data
             activity_name = sequence["activitynameindex"].data[1]
