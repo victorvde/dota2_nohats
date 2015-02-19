@@ -793,12 +793,8 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     add_replacement("frosty_effigy_ambient_l2_radiant", None)
     add_replacement("frosty_effigy_ambient_dire", None)
     add_replacement("frosty_effigy_ambient_l2_dire", None)
-    add_replacement("frosty_base_statue_destruction_radiant", "base_statue_destruction_generic")
-    add_replacement("frosty_base_statue_destruction_dire", "base_statue_destruction_generic")
     add_replacement("jade_effigy_ambient_radiant", None)
     add_replacement("jade_effigy_ambient_dire", None)
-    add_replacement("jade_base_statue_destruction_radiant", "base_statue_destruction_generic")
-    add_replacement("jade_base_statue_destruction_dire", "base_statue_destruction_generic")
 
     add_replacement("teleport_start_ti4", "teleport_start")
     add_replacement("teleport_end_ti4", "teleport_end")
