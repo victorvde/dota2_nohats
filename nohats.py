@@ -153,6 +153,8 @@ def get_default_item(d, defaults, item):
 
 def copy(src, dest):
     print("copy '{}' to '{}'".format(src, dest))
+    if not exists(dota_file(dest)) and not dest.endswith(".cloth"):
+        print("Warning: trying to override '{}' which does not exist".format(dest), file=stderr)
     if nohats_dir is None:
         return
     src = source_file(src)
