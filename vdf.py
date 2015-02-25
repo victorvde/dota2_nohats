@@ -20,8 +20,12 @@ def getstring(s):
     while True:
         c = s.read(1)
         assert c != "", "unexpected EOF"
-        if c == "\"":
+        if c == '"':
             break
+        if c == "\\":
+            c = s.read(1)
+            if c != '"':
+                lc.append("\\")
         lc.append(c)
     return "".join(lc)
 
