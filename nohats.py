@@ -351,8 +351,14 @@ def fix_hex_models(d, visuals):
 
 def fix_pet_models(visuals):
     pet_visuals, visuals = filtersplit(visuals, isvisualtype("pet"))
-    for asset, modifier in assetmodifier(pet_visuals):
+    for id, key, visual in pet_visuals:
+        pickup_model = visual.pop("pickup_item", None)
+        strange_type = visual.pop("strange_type", None)
+        skin = visual.pop("skin", None)
+        asset, modifier = assetmodifier1(visual)
         copy_model("models/development/invisiblebox.mdl", asset)
+        if pickup_model is not None:
+            copy_model("models/development/invisiblebox.mdl", pickup_model)
     return visuals
 
 def fix_portrait_models(visuals):
