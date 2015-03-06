@@ -8,7 +8,7 @@ from sys import argv, stdout, stderr, version
 from shutil import copyfile
 from os import makedirs, listdir, walk, name as os_name
 from kvlist import KVList
-from mdl import MDL
+from mdl import MDL, LocalSequence
 from pcf import PCF
 from swf import ScaleFormSWF, Matrix
 from wave import open as wave_open
@@ -699,12 +699,14 @@ def fix_animations(d, visuals, npc_heroes):
                 if nohats_dir is None:
                     continue
                 with open(nohats_file(model), "r+b") as s:
-                    orig_seq["labelindex"].data = sequence["labelindex"].data
-                    orig_seq["activitynameindex"].data = sequence["activitynameindex"].data
-                    orig_seq["numactivitymodifier"].data = sequence["numactivitymodifier"].data
-                    orig_seq["activitymodifierindex"].data = sequence["activitymodifierindex"].data
+                    new_seq = LocalSequence()
+                    new_seq.data = orig_seq.data
+                    new_seq["labelindex"].data = sequence["labelindex"].data
+                    new_seq["activitynameindex"].data = sequence["activitynameindex"].data
+                    new_seq["numactivitymodifier"].data = sequence["numactivitymodifier"].data
+                    new_seq["activitymodifierindex"].data = sequence["activitymodifierindex"].data
                     s.seek(sequence["base"].data)
-                    orig_seq.pack(s)
+                    new_seq.pack(s)
     return visuals
 
 def get_particlesystems(item):
