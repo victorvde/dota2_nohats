@@ -24,3 +24,5 @@ mkdir dota
 cp gameinfo.txt dota/gameinfo.txt
 
 7z a -mx -ms=off dota2_nohats.7z nohats dota nohats_log.txt readme.txt > /dev/null
+
+times
