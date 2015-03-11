@@ -91,6 +91,8 @@ def nohats():
     visuals = fix_flying_couriers(visuals, units, flying_courier_model)
     header("Fixing particle color")
     fix_particle_color(npc_heroes)
+    header("Fixing effigies")
+    fix_effigies()
     header("Fixing particles")
     visuals = fix_particles(d, defaults, default_ids, visuals, units, npc_heroes)
 
@@ -1112,6 +1114,18 @@ def fix_scaleform_shared_heroselectorandloadout():
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
             swf.pack(s)
+
+def fix_effigies():
+    peds = "models/heroes/pedestal/"
+    ped_radiant = peds + "effigy_pedestal_radiant.mdl"
+    ped_dire = peds + "effigy_pedestal_dire.mdl"
+
+    # frost
+    copy_model(ped_radiant, peds + "effigy_pedestal_frost_radiant.mdl")
+    copy_model(ped_dire, peds + "effigy_pedestal_frosty_dire.mdl")
+
+    # jade
+    copy_model(ped_radiant, peds + "pedestal_effigy_jade.mdl")
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
