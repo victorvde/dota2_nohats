@@ -1076,8 +1076,8 @@ def fix_scaleform_play():
     for tag in swf["content"]["tags"]:
         if tag["header"].data["tagcode"] == 82:
             abcfile = tag["content"]["abcdata"]
-            edit_methodbody(abcfile, "MainTimeline", "BeginSetupAdvertisements", rb"\xd1", b"\x27")
-            edit_methodbody(abcfile, "MainTimeline", "updateAdPicker", rb"\x62\x04\xd1\xad", b"\x02\x02\x02\x27")
+            edit_methodbody(abcfile, "MainTimeline", "BeginSetupAdvertisements", br"\xd1", b"\x27")
+            edit_methodbody(abcfile, "MainTimeline", "updateAdPicker", br"\x62\x04\xd1\xad", b"\x02\x02\x02\x27")
 
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
@@ -1093,7 +1093,7 @@ def fix_scaleform_play_matchmaking_status():
     for tag in swf["content"]["tags"]:
         if tag["header"].data["tagcode"] == 82:
             abcfile = tag["content"]["abcdata"]
-            edit_methodbody(abcfile, "MainTimeline", "setChromeBrowserVisible", rb"\xd1", b"\x27")
+            edit_methodbody(abcfile, "MainTimeline", "setChromeBrowserVisible", br"\xd1", b"\x27")
 
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
@@ -1109,7 +1109,7 @@ def fix_scaleform_shared_heroselectorandloadout():
     for tag in swf["content"]["tags"]:
         if tag["header"].data["tagcode"] == 82:
             abcfile = tag["content"]["abcdata"]
-            edit_methodbody(abcfile, "MainTimeline", "setSuggestedItems", rb"\x26", b"\x27", count=1)
+            edit_methodbody(abcfile, "MainTimeline", "setSuggestedItems", br"\x26", b"\x27", count=1)
 
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
