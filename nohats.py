@@ -755,6 +755,11 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
         for ps in get_particlesystems(item):
             default_particlesystems.add(ps)
 
+    particle_visuals, visuals = filtersplit(visuals, isvisualtype("particle"))
+    for id, k, v in particle_visuals:
+        asset, modifier = assetmodifier1(v)
+        add_replacement(modifier.lower(), asset.lower())
+
     for id, item in d["items_game"]["items"]:
         if id == "default" or id in default_ids:
             continue
@@ -775,16 +780,15 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
             if ps in default_particlesystems:
                 print("Warning: tried to override default particle system '{}' ({})".format(ps, id), file=stderr)
                 continue
-            if default_pss:
+            known_default = particle_replacements.get(ps)
+            if known_default and known_default in default_pss:
+                default_pss.remove(known_default)
+                default_ps = known_default
+            elif default_pss:
                 default_ps = default_pss.pop(0)
             else:
                 default_ps = None
             add_replacement(ps, default_ps)
-
-    particle_visuals, visuals = filtersplit(visuals, isvisualtype("particle"))
-    for id, k, v in particle_visuals:
-        asset, modifier = assetmodifier1(v)
-        add_replacement(modifier.lower(), asset.lower())
 
     for k, v in d["items_game"]["attribute_controlled_attached_particles"]:
         system_name = v["system"].lower()
