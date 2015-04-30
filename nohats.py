@@ -153,13 +153,14 @@ def get_default_item(d, defaults, item):
     default_item = get_item(d, default_id)
     return default_item
 
-def copy(src, dest):
+def copy(src, dest, dota=True):
     print("copy '{}' to '{}'".format(src, dest))
     if not exists(dota_file(dest)) and not dest.endswith(".cloth"):
         print("Warning: trying to override '{}' which does not exist".format(dest), file=stderr)
     if nohats_dir is None:
         return
-    src = source_file(src)
+    if dota:
+        src = source_file(src)
     dest = nohats_file(dest)
     if src == dest:
         return
@@ -384,8 +385,10 @@ def copy_sound(src, dest):
     elif src.endswith(".mp3") and dest.endswith(".mp3"):
         copy(src, dest)
     else:
-        print("Warning: unknown sound extension copy for '{}' to '{}'".format(src, dest), file=stderr)
-        #assert False, "Unknown sound extension copy for '{}' to '{}'".format(src, dest)
+        if src == "sound/null.wav" and dest.endswith(".mp3"):
+            copy("null.mp3", dest, dota=False)
+        else:
+            print("Warning: unknown sound extension copy for '{}' to '{}'".format(src, dest), file=stderr)
 
 def copy_wave(src, dest):
     print("copy wave '{}' to '{}'".format(src, dest))
@@ -437,6 +440,19 @@ def copy_wave(src, dest):
             assert len(new_frames) == 2 * len(frames)
             frames = new_frames
             nchannels = orig_nchannels
+        elif nchannels == 2 and orig_nchannels == 1:
+            # convert stereo to mono
+            assert sampwidth == 2, sampwidth
+            new_frames = b""
+            for i in range(nframes):
+                frame_i = i*2*sampwidth
+                frame_left = int.from_bytes(frames[frame_i:frame_i+sampwidth], byteorder="little", signed=True)
+                frame_right = int.from_bytes(frames[frame_i+sampwidth:frame_i+sampwidth*2], byteorder="little", signed=True)
+                new_frame = (frame_left + frame_right) // 2
+                new_frames += new_frame.to_bytes(2, byteorder="little", signed=True)
+            assert len(new_frames) == len(frames) / 2
+            frames = new_frames
+            nchannels = orig_nchannels
         else:
             assert False, "Don't know how to convert from {} channels to {} channels".format(nchannels, orig_nchannels)
 
@@ -479,6 +495,29 @@ def copy_wave(src, dest):
     finally:
         input.close()
 
+def sound_asset_layer(asset, layer):
+    return asset.get("operator_stacks", {}).get("start_stack", {}).get(layer, {}).get("entry_name")
+
+def copy_sound_asset(sounds, asset, modifier):
+    if asset is None:
+        asset_files = ["null.wav"]
+    else:
+        asset_files = sound_files(sounds[asset])
+    modifier_files = sound_files(sounds[modifier])
+    for i in range(len(modifier_files)):
+        copy_sound("sound/" + asset_files[i % len(asset_files)], "sound/" + modifier_files[i])
+
+    for layer in ["play_second_layer", "play_third_layer"]:
+        if asset is None:
+            layer_asset = None
+        else:
+            layer_asset = sound_asset_layer(sounds[asset], layer)
+        layer_modifier = sound_asset_layer(sounds[modifier], layer)
+
+        if layer_asset != layer_modifier:
+            if layer_modifier is not None:
+                copy_sound_asset(sounds, layer_asset, layer_modifier)
+
 def fix_sounds(visuals):
     # get sound list
     sounds = KVList()
@@ -500,11 +539,7 @@ def fix_sounds(visuals):
         if not asset in sounds:
             print("Warning: can't find sound asset {}".format(asset), file=stderr)
             continue
-        asset_files = sound_files(sounds[asset])
-        modifier_files = sound_files(sounds[modifier])
-        for i in range(len(modifier_files)):
-            copy_sound("sound/" + asset_files[i % len(asset_files)], "sound/" + modifier_files[i])
-
+        copy_sound_asset(sounds, asset, modifier)
     return visuals
 
 def fix_hero_icons(visuals):
