@@ -61,6 +61,8 @@ def nohats():
     fix_models(d, defaults, default_ids)
     header("Fixing alternate style models")
     visuals = fix_style_models(d, visuals, defaults)
+    header("Fixing additional wearables")
+    visuals = fix_additional_wearables(d, visuals, defaults)
     header("Fixing hex models")
     visuals = fix_hex_models(d, visuals)
     header("Fixing pet models")
@@ -108,7 +110,8 @@ def get_hero(d, item):
     if "used_by_heroes" not in item or item["used_by_heroes"] in ["0", "1"]:
         return None
     heroes = list(item["used_by_heroes"].keys())
-    assert len(heroes) == 1
+    if len(heroes) != 1:
+        return None
     hero = heroes[0]
     assert item["used_by_heroes"][hero] == "1"
     return hero
@@ -137,11 +140,6 @@ def get_defaults(d):
                 print("Warning: id '{}' is a duplicate default for '{}'".format(id, (hero, slot)), file=stderr)
             else:
                 defaults[(hero, slot)] = id
-            if "visuals" in item:
-                if "additional_wearable" in item["visuals"]:
-                    (additional_id, additional_item) = find_item_by_name(d, item["visuals"]["additional_wearable"])
-                    additional_slot = get_slot(d, additional_item)
-                    defaults[(hero, additional_slot)] = additional_id
     return defaults
 
 def get_default_item(d, defaults, item):
@@ -229,8 +227,8 @@ def get_visuals(d, default_ids):
     # get visual modifiers
     visuals = []
     for id, item in d["items_game"]["items"]:
-        if id == "default" or id in default_ids:
-            continue
+        # if id == "default" or id in default_ids:
+        #     continue
         slot = get_slot(d, item)
         if slot in ["weather", "music"]:
             continue
@@ -259,7 +257,6 @@ def filter_visuals(visuals):
         "alternate_icons",
         "animation_modifiers",
         "skin",
-        "additional_wearable",
         "player_card",
         "hide_on_portrait",
     ]
@@ -280,6 +277,7 @@ def filter_visuals(visuals):
         "buff_modifier",
         "strange_control_point",
         "healthbar_offset",
+        "entity_healthbar_offset",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]
@@ -324,17 +322,37 @@ def assetmodifier1(visual):
     if "frequency" in visual:
         frequency = visual.pop("frequency")
         assert frequency == "1", frequency
-    if "style" in visual:
-        style = visual.pop("style")
-    if "force_display" in visual:
-        force_display = visual.pop("force_display")
-        assert force_display == "1", force_display
+    style = visual.pop("style", None)
+    force_display = visual.pop("force_display", "1")
+    assert force_display == "1", force_display
+    ingame_scale = visual.pop("ingame_scale", None)
+    loadout_scale = visual.pop("loadout_scale", None)
+    loadout_default_offset = visual.pop("loadout_default_offset", None)
+    loadout_hero_offsets = visual.pop("loadout_hero_offsets", None)
     assert len(visual) == 0, list(visual.keys())
     return (asset, modifier)
 
 def assetmodifier(iterable):
     for id, key, visual in iterable:
         yield assetmodifier1(visual)
+
+def fix_additional_wearables(d, visuals, defaults):
+    additional_wearable_visuals, visuals = filtersplit(visuals, isvisualtype("additional_wearable"))
+    additional_wearables = OrderedDict()
+    for id, k, v in additional_wearable_visuals:
+        asset, modifier = assetmodifier1(v)
+        assert modifier is None, modifier
+        assert id not in additional_wearables, id
+        additional_wearables[id] = asset
+    for id, asset in additional_wearables.items():
+        item = get_item(d, id)
+        hero = get_hero(d, item)
+        slot = get_slot(d, item)
+        default_id = defaults[(hero, slot)]
+        if id == default_id:
+            continue
+        copy_model(additional_wearables[default_id], asset)
+    return visuals
 
 def fix_hex_models(d, visuals):
     hex_visuals, visuals = filtersplit(visuals, isvisualtype("hex_model"))
@@ -687,7 +705,7 @@ def get_npc_heroes():
     return npc_heroes
 
 def fix_animations(d, visuals, npc_heroes):
-    ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT"]
+    ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT", "ACT_DOTA_STATUE_SEQUENCE"]
 
     item_activity_modifiers = set()
 
