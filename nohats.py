@@ -862,6 +862,10 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     add_replacement("frosty_effigy_ambient_l2_dire", None)
     add_replacement("jade_effigy_ambient_radiant", None)
     add_replacement("jade_effigy_ambient_dire", None)
+    add_replacement("gold_effigy_ambient_radiant", None)
+    add_replacement("gold_effigy_ambient_dire", None)
+    add_replacement("gold_effigy_ambient_radiant_lvl2", None)
+    add_replacement("gold_effigy_ambient_dire_lvl2", None)
 
     add_replacement("teleport_start_ti4", "teleport_start")
     add_replacement("teleport_end_ti4", "teleport_end")
@@ -870,6 +874,21 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     add_replacement("dagon_ti4", "dagon")
     add_replacement("radiant_fountain_regen_ti4", "radiant_fountain_regen")
     add_replacement("bottle_ti4", "bottle")
+
+    add_replacement("teleport_start_ti5", "teleport_start")
+    add_replacement("teleport_end_ti5", "teleport_end")
+    add_replacement("teleport_start_lvl2_ti5", "teleport_start")
+    add_replacement("teleport_end_lvl2_ti5", "teleport_end")
+    add_replacement("blink_dagger_start_ti5", "blink_dagger_start")
+    add_replacement("blink_dagger_end_ti5", "blink_dagger_end")
+    add_replacement("blink_dagger_start_lvl2_ti5", "blink_dagger_start")
+    add_replacement("blink_dagger_end_lvl2_ti5", "blink_dagger_end")
+    add_replacement("dagon_ti5", "dagon")
+    add_replacement("dagon_lvl2_ti5", "dagon") # missing?
+    add_replacement("cyclone_ti5", "cyclone")
+    add_replacement("radiant_fountain_regen_ti5", "radiant_fountain_regen")
+    add_replacement("radiant_fountain_regen_lvl2_ti5", "radiant_fountain_regen")
+    add_replacement("bottle_ti5", "bottle")
 
     forwarded_particle_replacements = OrderedDict()
     for system, default_system in particle_replacements.items():
@@ -1183,6 +1202,12 @@ def fix_effigies():
 
     # jade
     copy_model(ped_radiant, peds + "pedestal_effigy_jade.mdl")
+
+    # ti5
+    copy_model(ped_radiant, peds + "effigy_pedestal_ti5.mdl")
+    copy_model(ped_dire, peds + "effigy_pedestal_ti5_dire.mdl")
+    copy_model(ped_radiant, peds + "effigy_pedestal_ti5_lvl2.mdl")
+    copy_model(ped_dire, peds + "effigy_pedestal_ti5_dire_lvl2.mdl")
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
