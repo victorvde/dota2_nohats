@@ -416,7 +416,7 @@ def copy_wave(src, dest):
         if src == "sound/null.wav":
             framerate = orig_framerate
             sampwidth = orig_sampwidth
-            frames = b""
+            frames = bytearray()
             nframes = 0
 
         # sanity
@@ -430,7 +430,7 @@ def copy_wave(src, dest):
             pass
         elif nchannels == 1 and orig_nchannels == 2:
             # convert mono to stereo
-            new_frames = b""
+            new_frames = bytearray()
             i = 0
             while i < len(frames):
                 new_frames += frames[i:i+sampwidth]
@@ -443,7 +443,7 @@ def copy_wave(src, dest):
         elif nchannels == 2 and orig_nchannels == 1:
             # convert stereo to mono
             assert sampwidth == 2, sampwidth
-            new_frames = b""
+            new_frames = bytearray()
             for i in range(nframes):
                 frame_i = i*2*sampwidth
                 frame_left = int.from_bytes(frames[frame_i:frame_i+sampwidth], byteorder="little", signed=True)
@@ -461,7 +461,7 @@ def copy_wave(src, dest):
         nfiller_frames = max(frames_needed - nframes, 0)
         nfiller_bytes = nfiller_frames * sampwidth * nchannels
         if "_loop" in src:
-            filler_frames = b""
+            filler_frames = bytearray()
             while len(filler_frames) < nfiller_bytes:
                 filler_frame += frames
             filler_frames = filler_frames[:nfiller_bytes]
