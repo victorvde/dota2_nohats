@@ -278,6 +278,7 @@ def filter_visuals(visuals):
         "strange_control_point",
         "healthbar_offset",
         "entity_healthbar_offset",
+        "portrait_game",
         ]
     to_ignore = invisualtypes(ignore_types)
     visuals = [x for x in visuals if not to_ignore(x)]

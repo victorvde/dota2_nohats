@@ -30,14 +30,17 @@ class ElementIndex(BaseField):
         return self.elements[self.index_field.data]
 
     def pack_data(self, s, data):
-        try:
-            index = self.elements.index(data)
-        except KeyError:
-            data.new_guid()
-            index = len(self.elements)
-            self.elements.append_data(data.data)
-            self.attributes.append_data(data.attribute.data)
-            self.elements[index].attribute = self.attributes[index]
+        if data is None:
+            index = -1
+        else:
+            try:
+                index = self.elements.index(data)
+            except KeyError:
+                data.new_guid()
+                index = len(self.elements)
+                self.elements.append_data(data.data)
+                self.attributes.append_data(data.attribute.data)
+                self.elements[index].attribute = self.attributes[index]
         self.index_field.data = index
         self.index_field.pack(s)
 
