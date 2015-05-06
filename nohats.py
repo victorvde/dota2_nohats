@@ -892,7 +892,7 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
     add_replacement("blink_dagger_start_lvl2_ti5", "blink_dagger_start")
     add_replacement("blink_dagger_end_lvl2_ti5", "blink_dagger_end")
     add_replacement("dagon_ti5", "dagon")
-    add_replacement("dagon_lvl2_ti5", "dagon") # missing?
+    add_replacement("dagon_lvl2_ti5", "dagon")
     add_replacement("cyclone_ti5", "cyclone")
     add_replacement("radiant_fountain_regen_ti5", "radiant_fountain_regen")
     add_replacement("radiant_fountain_regen_lvl2_ti5", "radiant_fountain_regen")
