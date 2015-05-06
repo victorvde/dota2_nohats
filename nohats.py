@@ -441,8 +441,10 @@ def copy_wave(src, dest):
         # sanity
         if framerate != orig_framerate:
             print("Warning: source {} has framerate {} but destination {} has framerate {}".format(src, framerate, dest, orig_framerate), file=stderr)
+            return
         if sampwidth != orig_sampwidth:
             print("Warning: source {} has sampwidth {} but destination {} has sampwidth {}".format(src, sampwidth, dest, orig_sampwidth), file=stderr)
+            return
 
         # fix number of channels
         if nchannels == orig_nchannels:
@@ -524,7 +526,12 @@ def copy_sound_asset(sounds, asset, modifier):
         asset_files = sound_files(sounds[asset])
     modifier_files = sound_files(sounds[modifier])
     for i in range(len(modifier_files)):
-        copy_sound("sound/" + asset_files[i % len(asset_files)], "sound/" + modifier_files[i])
+        asset_file = asset_files[i % len(asset_files)]
+        modifier_file = modifier_files[i]
+        if modifier_file.startswith("weapons/hero/shared"):
+            print("Warning: not copying '{}' to '{}' because it is shared".format(asset_file, modifier_file), file=stderr)
+        else:
+            copy_sound("sound/" + asset_file, "sound/" + modifier_file)
 
     for layer in ["play_second_layer", "play_third_layer"]:
         if asset is None:
