@@ -717,7 +717,7 @@ def get_npc_heroes():
     return npc_heroes
 
 def fix_animations(d, visuals, npc_heroes):
-    ignored = ["ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT", "ACT_DOTA_STATUE_SEQUENCE"]
+    ignored = ["ACT_DOTA_STATUE_SEQUENCE"]
 
     item_activity_modifiers = set()
 
@@ -754,7 +754,7 @@ def fix_animations(d, visuals, npc_heroes):
                 orig_seq = sequence_dict.get((activity_name, orig_activity_modifiers))
                 if orig_seq is None:
                     orig_seq = sequence_dict.get((activity_name, frozenset()))
-                idle_acts = ["ACT_DOTA_IDLE_RARE", "ACT_DOTA_VICTORY", "ACT_DOTA_TELEPORT", "ACT_DOTA_TELEPORT_END", "ACT_DOTA_SPAWN", "ACT_DOTA_KILLTAUNT"]
+                idle_acts = ["ACT_DOTA_IDLE_RARE", "ACT_DOTA_VICTORY", "ACT_DOTA_TELEPORT", "ACT_DOTA_TELEPORT_END", "ACT_DOTA_SPAWN", "ACT_DOTA_KILLTAUNT", "ACT_DOTA_TAUNT", "ACT_DOTA_LOADOUT"]
                 if orig_seq is None and activity_name in idle_acts:
                     orig_seq = sequence_dict.get(("ACT_DOTA_IDLE", orig_activity_modifiers))
                 if orig_seq is None and activity_name in ["ACT_DOTA_MOMENT_OF_COURAGE"]:

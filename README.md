@@ -53,7 +53,7 @@ Then cosmetic effects are overridden, including:
 * Sounds (*.wav or *.mp3)
 * Icons (*.png)
 * Particles (*.pcf)
-* Animations except taunts (hero *.mdl)
+* Animations (hero *.mdl)
 * Skins (hero *.mdl)
 
 Also in-game ads are removed:
