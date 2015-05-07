@@ -320,16 +320,20 @@ def assetmodifier1(visual):
     type = visual.pop("type")
     asset = visual.pop("asset", None)
     modifier = visual.pop("modifier", None)
-    if "frequency" in visual:
-        frequency = visual.pop("frequency")
-        assert frequency == "1", frequency
+    frequency = visual.pop("frequency", None)
+    assert frequency in [None, "1"], frequency
     style = visual.pop("style", None)
-    force_display = visual.pop("force_display", "1")
-    assert force_display == "1", force_display
+    force_display = visual.pop("force_display", None)
+    assert force_display in [None, "1"], force_display
     ingame_scale = visual.pop("ingame_scale", None)
     loadout_scale = visual.pop("loadout_scale", None)
     loadout_default_offset = visual.pop("loadout_default_offset", None)
     loadout_hero_offsets = visual.pop("loadout_hero_offsets", None)
+    levelup_rule = visual.pop("levelup_rule", None)
+    assert levelup_rule in [None, "compendiumlevel", "killeater"], levelup_rule
+    compendium_event_id = visual.pop("compendium_event_id", None)
+    supports_coop_teleport = visual.pop("supports_coop_teleport", None)
+    assert supports_coop_teleport in [None, "1"]
     assert len(visual) == 0, list(visual.keys())
     return (asset, modifier)
 
