@@ -1125,6 +1125,7 @@ def fix_scaleform():
     fix_scaleform_play()
     fix_scaleform_play_matchmaking_status()
     fix_scaleform_shared_heroselectorandloadout()
+    fix_scaleform_challenges()
 
 def find_methodbody(abcfile, instancename, methodname):
     for instance in abcfile["instance"]:
@@ -1198,6 +1199,22 @@ def fix_scaleform_shared_heroselectorandloadout():
         if tag["header"].data["tagcode"] == 82:
             abcfile = tag["content"]["abcdata"]
             edit_methodbody(abcfile, "MainTimeline", "setSuggestedItems", br"\x26", b"\x27", count=1)
+
+    if nohats_dir:
+        with open(nohats_file(filename), "wb") as s:
+            swf.pack(s)
+
+def fix_scaleform_challenges():
+    filename = "resource/flash3/challenges.gfx"
+    print(filename)
+    swf = ScaleFormSWF()
+    with open(dota_file(filename), "rb") as s:
+        swf.unpack(s)
+
+    for tag in swf["content"]["tags"]:
+        if tag["header"].data["tagcode"] == 82:
+            abcfile = tag["content"]["abcdata"]
+            edit_methodbody(abcfile, "MainTimeline", "updateStatusSection", br"\xd1\x24\x00\xae", b"\x02\x02\x02\x27", count=1)
 
     if nohats_dir:
         with open(nohats_file(filename), "wb") as s:
