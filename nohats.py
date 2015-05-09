@@ -1235,8 +1235,8 @@ def fix_effigies():
     # ti5
     copy_model(ped_radiant, peds + "effigy_pedestal_ti5.mdl")
     copy_model(ped_dire, peds + "effigy_pedestal_ti5_dire.mdl")
-    copy_model(ped_radiant, peds + "effigy_pedestal_ti5_lvl2.mdl")
-    copy_model(ped_dire, peds + "effigy_pedestal_ti5_dire_lvl2.mdl")
+    copy_model(ped_radiant, peds + "effigy_pedestal_ti5_lv2.mdl")
+    copy_model(ped_dire, peds + "effigy_pedestal_ti5_lv2_dire.mdl")
 
 if __name__ == "__main__":
     dota_dir = abspath(argv[1])
