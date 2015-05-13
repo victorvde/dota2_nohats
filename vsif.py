@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Victor van den Elzen
+# Copyright (c) Victor van den Elzen
 # Released under the Expat license, see LICENSE file for details
 
 from binary import Struct, Magic, Format, Array, String, Pointer, DataPointer, Index, PrefixedArray, BaseField, Mapping, Flags, getbytes

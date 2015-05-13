@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Victor van den Elzen
+# Copyright (c) Victor van den Elzen
 # Released under the Expat license, see LICENSE file for details
 
 from argparse import ArgumentParser, FileType

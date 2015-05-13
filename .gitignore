@@ -5,6 +5,11 @@
 *.json
 *.mdl
 *.exe
+*.7z
+*.csv
 Include
 Lib
 Scripts
+dota
+nohats
+dota2_nohats
