@@ -203,6 +203,7 @@ def fix_item_model(item, default_item, model_player):
     if default_item is not None:
         if not model_player in default_item:
             print("Warning: missing default model for '{}'".format(default_item["name"]), file=stderr)
+            copy_model("models/development/invisiblebox.mdl", item[model_player])
             return
         copy_model(default_item[model_player], item[model_player])
         if has_alternate_skins(item):
@@ -334,6 +335,7 @@ def assetmodifier1(visual):
     compendium_event_id = visual.pop("compendium_event_id", None)
     supports_coop_teleport = visual.pop("supports_coop_teleport", None)
     assert supports_coop_teleport in [None, "1"]
+    skin = visual.pop("skin", None)
     assert len(visual) == 0, list(visual.keys())
     return (asset, modifier)
 
@@ -528,6 +530,9 @@ def copy_sound_asset(sounds, asset, modifier):
         asset_files = ["null.wav"]
     else:
         asset_files = sound_files(sounds[asset])
+    if modifier not in sounds:
+        print("Warning: sound {} was not found".format(modifier), file=stderr)
+        return
     modifier_files = sound_files(sounds[modifier])
     for i in range(len(modifier_files)):
         asset_file = asset_files[i % len(asset_files)]
@@ -611,7 +616,8 @@ def fix_summons(visuals, units, d, default_ids):
         if "visuals" in item:
             for k, v in item["visuals"]:
                 if isvisualtype("entity_model")((default_id, k, v)):
-                    asset, modifier = assetmodifier1(v)
+                    asset = v["asset"]
+                    modifier = v["modifier"]
                     default_entity_models[asset] = modifier
 
     # fix summon overrides
@@ -717,7 +723,7 @@ def get_npc_heroes():
     return npc_heroes
 
 def fix_animations(d, visuals, npc_heroes):
-    ignored = ["ACT_DOTA_STATUE_SEQUENCE"]
+    ignored = ["ACT_DOTA_STATUE_SEQUENCE", "ACT_DOTA_STAUTE_SEQUENCE"]
 
     item_activity_modifiers = set()
 
@@ -759,7 +765,7 @@ def fix_animations(d, visuals, npc_heroes):
                     orig_seq = sequence_dict.get(("ACT_DOTA_IDLE", orig_activity_modifiers))
                 if orig_seq is None and activity_name in ["ACT_DOTA_MOMENT_OF_COURAGE"]:
                     orig_seq = sequence_dict.get(("ACT_DOTA_CAST_ABILITY_3", orig_activity_modifiers))
-                if orig_seq is None and activity_name in ["ACT_DOTA_ATTACK_PARTICLE"]:
+                if orig_seq is None and activity_name in ["ACT_DOTA_ATTACK_PARTICLE", "ACT_DOTA_ATTACK_EVENT_BASH"]:
                     orig_seq = sequence_dict.get(("ACT_DOTA_ATTACK", orig_activity_modifiers))
                 assert orig_seq is not None, (activity_name, orig_activity_modifiers)
                 print("Replace sequence {} with {}".format(sequence["labelindex"].data[1], orig_seq and orig_seq["labelindex"].data[1]))
@@ -822,6 +828,11 @@ def get_particle_replacements(d, defaults, visuals, default_ids):
 
     particle_visuals, visuals = filtersplit(visuals, isvisualtype("particle"))
     for id, k, v in particle_visuals:
+        asset, modifier = assetmodifier1(v)
+        add_replacement(modifier.lower(), asset.lower())
+
+    particle_combined_visuals, visuals = filtersplit(visuals, isvisualtype("particle_combined"))
+    for id, k, v in particle_combined_visuals:
         asset, modifier = assetmodifier1(v)
         add_replacement(modifier.lower(), asset.lower())
 
