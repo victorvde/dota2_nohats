@@ -155,14 +155,17 @@ def copy(src, dest, dota=True):
     print("copy '{}' to '{}'".format(src, dest))
     if not exists(dota_file(dest)) and not dest.endswith(".cloth"):
         print("Warning: trying to override '{}' which does not exist".format(dest), file=stderr)
-    if nohats_dir is None:
-        return
     if dota:
         src = source_file(src)
+    if not exists(src):
+        print("Warning: source file {} does not exist".format(src), file=stderr)
+        return
     dest = nohats_file(dest)
     if src == dest:
         return
     dest_dir = dirname(dest)
+    if nohats_dir is None:
+        return
     if not exists(dest_dir):
         makedirs(dest_dir)
     if not exists(dest):
